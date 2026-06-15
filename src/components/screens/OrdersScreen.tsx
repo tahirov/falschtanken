@@ -1,14 +1,18 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { RefreshCw, MapPin, Car, Clock, Inbox, Loader2, ChevronDown, Check } from 'lucide-react'
+import {
+  RefreshCw, MapPin, Car, Clock, Inbox, Loader2, ChevronDown, Check,
+  Search, User, Phone, ArrowUpDown, ListFilter, X,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { useAppStore } from '@/store/useAppStore'
 import { translations } from '@/lib/i18n'
@@ -16,6 +20,10 @@ import { useAuthStore, fetchOrders, updateOrderStatus } from '@/lib/auth'
 import type { Order, OrderStatus } from '@/lib/orders'
 
 const STATUSES: OrderStatus[] = ['requested', 'dispatched', 'completed', 'cancelled']
+
+type StatusFilter = OrderStatus | 'all'
+type SortKey = 'newest' | 'oldest' | 'priceHigh' | 'priceLow'
+const SORT_KEYS: SortKey[] = ['newest', 'oldest', 'priceHigh', 'priceLow']
 
 const severityClass: Record<string, string> = {
   low: 'bg-green-100 text-green-800 border-green-200',
@@ -39,6 +47,37 @@ export function OrdersScreen() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [sortBy, setSortBy] = useState<SortKey>('newest')
+
+  const sortLabels: Record<SortKey, string> = {
+    newest: t.sortNewest,
+    oldest: t.sortOldest,
+    priceHigh: t.sortPriceHigh,
+    priceLow: t.sortPriceLow,
+  }
+
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    let list = orders
+    if (statusFilter !== 'all') list = list.filter((o) => o.status === statusFilter)
+    if (q) {
+      list = list.filter((o) =>
+        [o.situation, o.vehicle, o.location, o.contact_name, o.contact_phone]
+          .some((f) => (f ?? '').toLowerCase().includes(q)),
+      )
+    }
+    return [...list].sort((a, b) => {
+      switch (sortBy) {
+        case 'oldest': return a.created_at.localeCompare(b.created_at)
+        case 'priceHigh': return (b.price ?? 0) - (a.price ?? 0)
+        case 'priceLow': return (a.price ?? 0) - (b.price ?? 0)
+        default: return b.created_at.localeCompare(a.created_at)
+      }
+    })
+  }, [orders, query, statusFilter, sortBy])
 
   // Guard: no session => back to the funnel.
   useEffect(() => {
@@ -86,14 +125,82 @@ export function OrdersScreen() {
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b">
-        <p className="text-sm text-muted-foreground">
-          {loading ? t.loading : t.ordersSubtitle(orders.length)}
-        </p>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={load} disabled={loading}>
-          <RefreshCw className={`size-3.5 ${loading ? 'animate-spin' : ''}`} />
-          {t.refresh}
-        </Button>
+      <div className="px-4 py-3 border-b space-y-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm text-muted-foreground">
+            {loading ? t.loading : t.resultsCount(visible.length, orders.length)}
+          </p>
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={load} disabled={loading}>
+            <RefreshCw className={`size-3.5 ${loading ? 'animate-spin' : ''}`} />
+            {t.refresh}
+          </Button>
+        </div>
+
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t.search}
+            className="pl-9 pr-9 h-9"
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              aria-label="Clear search"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Filter + Sort */}
+        <div className="flex gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={<Button variant="outline" size="sm" className="flex-1 justify-start gap-1.5 font-normal" />}
+            >
+              <ListFilter className="size-3.5 shrink-0" />
+              <span className="truncate">
+                {statusFilter === 'all' ? t.filterAll : t.status[statusFilter]}
+              </span>
+              <ChevronDown className="size-3.5 ml-auto shrink-0 opacity-60" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-44">
+              <DropdownMenuItem onClick={() => setStatusFilter('all')}>
+                <span className="flex-1">{t.filterAll}</span>
+                {statusFilter === 'all' && <Check className="size-3.5 text-primary" />}
+              </DropdownMenuItem>
+              {STATUSES.map((s) => (
+                <DropdownMenuItem key={s} onClick={() => setStatusFilter(s)}>
+                  <span className="flex-1">{t.status[s]}</span>
+                  {statusFilter === s && <Check className="size-3.5 text-primary" />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={<Button variant="outline" size="sm" className="flex-1 justify-start gap-1.5 font-normal" />}
+            >
+              <ArrowUpDown className="size-3.5 shrink-0" />
+              <span className="truncate">{sortLabels[sortBy]}</span>
+              <ChevronDown className="size-3.5 ml-auto shrink-0 opacity-60" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              {SORT_KEYS.map((k) => (
+                <DropdownMenuItem key={k} onClick={() => setSortBy(k)}>
+                  <span className="flex-1">{sortLabels[k]}</span>
+                  {sortBy === k && <Check className="size-3.5 text-primary" />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* List */}
@@ -112,8 +219,13 @@ export function OrdersScreen() {
             <Inbox className="size-8" />
             <p className="text-sm">{t.ordersEmpty}</p>
           </div>
+        ) : visible.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
+            <Search className="size-8" />
+            <p className="text-sm">{t.noResults}</p>
+          </div>
         ) : (
-          orders.map((order) => (
+          visible.map((order) => (
             <Card key={order.id}>
               <CardContent className="p-3.5">
                 <div className="flex items-start justify-between gap-2">
@@ -145,6 +257,21 @@ export function OrdersScreen() {
                     <MapPin className="size-3 shrink-0" />
                     <span className="truncate">{order.location || '—'}</span>
                   </p>
+                  {order.contact_name && (
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
+                      <User className="size-3 shrink-0" />
+                      <span className="truncate">{order.contact_name}</span>
+                    </p>
+                  )}
+                  {order.contact_phone && (
+                    <a
+                      href={`tel:${order.contact_phone}`}
+                      className="flex items-center gap-1.5 text-xs text-primary min-w-0 w-fit hover:underline"
+                    >
+                      <Phone className="size-3 shrink-0" />
+                      <span className="truncate">{order.contact_phone}</span>
+                    </a>
+                  )}
                 </div>
 
                 <div className="mt-2.5 flex items-center justify-between gap-2">

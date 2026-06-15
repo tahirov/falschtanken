@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   CreditCard, Smartphone, Banknote, Pencil,
-  MapPin, Car, Zap, Fuel, Clock,
+  MapPin, Car, Zap, Fuel, Clock, User, Phone,
 } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { translations } from '@/lib/i18n'
@@ -36,8 +38,10 @@ export function OfferScreen() {
     navigate('/intake')
   }
 
+  const contactComplete = store.contactName.trim() !== '' && store.contactPhone.trim() !== ''
+
   async function handleRequest() {
-    if (submitting) return
+    if (submitting || !contactComplete) return
     setSubmitting(true)
     // Persist the case as an order (the admin log entry). Don't block the
     // customer funnel on a backend hiccup — proceed to dispatch either way.
@@ -47,6 +51,8 @@ export function OfferScreen() {
       litres: store.litres,
       location: store.location,
       vehicle: store.vehicle,
+      contact_name: store.contactName.trim(),
+      contact_phone: store.contactPhone.trim(),
       severity,
       price,
       eta_minutes: eta,
@@ -150,13 +156,49 @@ export function OfferScreen() {
         </CardContent>
       </Card>
 
+      {/* Contact details */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm text-muted-foreground">{t.offer.contactTitle}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 pt-0">
+          <div className="space-y-1.5">
+            <Label htmlFor="contact-name" className="flex items-center gap-1.5 text-xs">
+              <User className="size-3.5 text-muted-foreground" />
+              {t.offer.contactName}
+            </Label>
+            <Input
+              id="contact-name"
+              autoComplete="name"
+              value={store.contactName}
+              onChange={(e) => store.setContactName(e.target.value)}
+              placeholder={t.offer.contactNamePlaceholder}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="contact-phone" className="flex items-center gap-1.5 text-xs">
+              <Phone className="size-3.5 text-muted-foreground" />
+              {t.offer.contactPhone}
+            </Label>
+            <Input
+              id="contact-phone"
+              type="tel"
+              autoComplete="tel"
+              value={store.contactPhone}
+              onChange={(e) => store.setContactPhone(e.target.value)}
+              placeholder={t.offer.contactPhonePlaceholder}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       {/* CTA */}
       <div className="space-y-2 pb-2">
         <Button
           className="w-full"
           size="lg"
           onClick={handleRequest}
-          disabled={submitting}
+          disabled={submitting || !contactComplete}
         >
           {t.offer.cta}
         </Button>

@@ -26,6 +26,8 @@ export interface NewOrder {
   litres: string
   location: string
   vehicle: string
+  contact_name: string
+  contact_phone: string
   severity: Severity
   price: number
   eta_minutes: number
@@ -44,6 +46,8 @@ export async function createOrder(order: NewOrder): Promise<{ error: string | nu
     litres: order.litres,
     location: order.location,
     vehicle: order.vehicle,
+    contact_name: order.contact_name,
+    contact_phone: order.contact_phone,
     severity: order.severity,
     price: order.price,
     eta_minutes: order.eta_minutes,

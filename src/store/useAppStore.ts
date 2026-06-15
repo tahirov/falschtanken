@@ -7,6 +7,8 @@ export interface CaseState {
   litres: string
   location: string
   vehicle: string
+  contactName: string
+  contactPhone: string
   allComplete: boolean
   eta: number
   price: number
@@ -22,6 +24,8 @@ interface AppActions {
   setLitres: (v: string) => void
   setLocation: (v: string) => void
   setVehicle: (v: string) => void
+  setContactName: (v: string) => void
+  setContactPhone: (v: string) => void
   setAllComplete: (v: boolean) => void
   setEta: (v: number) => void
   setPrice: (v: number) => void
@@ -36,6 +40,8 @@ const initialState: CaseState = {
   litres: '',
   location: '',
   vehicle: '',
+  contactName: '',
+  contactPhone: '',
   allComplete: false,
   eta: 0,
   price: 150,
@@ -50,6 +56,8 @@ export const useAppStore = create<CaseState & AppActions>((set) => ({
   setLitres: (v) => set({ litres: v }),
   setLocation: (v) => set({ location: v }),
   setVehicle: (v) => set({ vehicle: v }),
+  setContactName: (v) => set({ contactName: v }),
+  setContactPhone: (v) => set({ contactPhone: v }),
   setAllComplete: (v) => set({ allComplete: v }),
   setEta: (v) => set({ eta: v }),
   setPrice: (v) => set({ price: v }),
