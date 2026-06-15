@@ -120,6 +120,9 @@ Deno.serve(async (req) => {
         temperature: 0.2,
         top_p: 0.9,
         max_tokens: 2048,
+        // This is a reasoning model: left on, it can spend the whole token
+        // budget thinking and return an empty `content`. We only need the JSON.
+        chat_template_kwargs: { thinking: false },
       }),
     })
   } catch (e) {
@@ -132,7 +135,10 @@ Deno.serve(async (req) => {
   }
 
   const data = await res.json()
-  const content: string = data.choices?.[0]?.message?.content ?? ''
+  const msg = data.choices?.[0]?.message ?? {}
+  // Prefer the answer field; fall back to reasoning_content, whose tail still
+  // carries the final JSON if the model ignored the no-thinking hint.
+  const content: string = (msg.content && msg.content.trim() !== '' ? msg.content : msg.reasoning_content) ?? ''
   let parsed: Partial<AgentResult>
   try {
     parsed = JSON.parse(extractJson(content))
