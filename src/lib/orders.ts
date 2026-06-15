@@ -63,7 +63,10 @@ export async function createOrder(order: NewOrder): Promise<{ error: string | nu
  * Falls back to a plain anon insert so the funnel never loses an order if the
  * function is unreachable.
  */
-export async function submitOrder(order: NewOrder, quote: Quote): Promise<{ error: string | null }> {
+export async function submitOrder(
+  order: NewOrder,
+  quote: Quote,
+): Promise<{ error: string | null; id: string | null }> {
   const { data, error } = await supabase.functions.invoke('submit-order', {
     body: {
       order: {
@@ -82,6 +85,16 @@ export async function submitOrder(order: NewOrder, quote: Quote): Promise<{ erro
       quote,
     },
   })
-  if (error || data?.error) return createOrder(order)
-  return { error: null }
+  if (error || data?.error) {
+    const fallback = await createOrder(order)
+    return { error: fallback.error, id: null }
+  }
+  return { error: null, id: (data?.id as string) ?? null }
+}
+
+/** Poll a single order's status (operator Accept/Decline arrives via Telegram). */
+export async function getOrderStatus(id: string): Promise<OrderStatus | null> {
+  const { data, error } = await supabase.functions.invoke('order-status', { body: { id } })
+  if (error || !data || data.error) return null
+  return data.status as OrderStatus
 }

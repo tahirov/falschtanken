@@ -78,6 +78,12 @@ export const translations = {
       cancelConfirm: 'Ja, stornieren',
       cancelAbort: 'Nein, weiter',
       callToast: 'Funktion folgt',
+      waiting: 'Warten auf Bestätigung des Technikers…',
+      acceptedMessage: (name: string, eta: number) =>
+        `Hallo, ich bin ${name}. Ich habe Ihren Auftrag angenommen und bin bereits auf dem Weg — Ankunft in ca. ${eta} Minuten. Bitte schalten Sie die Warnblinkanlage ein und bleiben Sie sicher im Fahrzeug.`,
+      declinedTitle: 'Gerade kein Techniker verfügbar',
+      declinedText: 'Der Techniker konnte den Auftrag leider nicht übernehmen. Bitte versuchen Sie es erneut — wir suchen einen weiteren Helfer in Ihrer Nähe.',
+      declinedCta: 'Zurück zum Start',
     },
     nav: {
       back: 'Zurück',
@@ -238,6 +244,12 @@ export const translations = {
       cancelConfirm: 'Yes, cancel',
       cancelAbort: 'No, continue',
       callToast: 'Feature coming soon',
+      waiting: 'Waiting for the technician to confirm…',
+      acceptedMessage: (name: string, eta: number) =>
+        `Hi, I'm ${name}. I've accepted your job and I'm already on my way — arriving in approx. ${eta} minutes. Please switch on your hazard lights and stay safe in the vehicle.`,
+      declinedTitle: 'No technician available right now',
+      declinedText: 'The technician could not take this job. Please try again — we are looking for another helper near you.',
+      declinedCta: 'Back to start',
     },
     nav: {
       back: 'Back',
@@ -398,6 +410,12 @@ export const translations = {
       cancelConfirm: 'Tak, anuluj',
       cancelAbort: 'Nie, kontynuuj',
       callToast: 'Funkcja wkrótce',
+      waiting: 'Czekamy na potwierdzenie technika…',
+      acceptedMessage: (name: string, eta: number) =>
+        `Cześć, jestem ${name}. Przyjąłem zlecenie i już jadę — przyjazd za ok. ${eta} min. Proszę włączyć światła awaryjne i bezpiecznie zaczekać w pojeździe.`,
+      declinedTitle: 'Brak dostępnego technika',
+      declinedText: 'Technik nie mógł przyjąć tego zlecenia. Spróbuj ponownie — szukamy innego pomocnika w pobliżu.',
+      declinedCta: 'Powrót na start',
     },
     nav: {
       back: 'Wróć',

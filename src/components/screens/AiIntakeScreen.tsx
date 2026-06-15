@@ -67,7 +67,7 @@ export function AiIntakeScreen() {
   async function confirmOrder() {
     if (!quote || submitting) return
     setSubmitting(true)
-    await submitOrder(
+    const { id } = await submitOrder(
       {
         situation: store.situation,
         engine_started: store.engineStarted,
@@ -83,6 +83,7 @@ export function AiIntakeScreen() {
       },
       quote,
     )
+    store.setOrderId(id)
     navigate('/dispatch')
   }
 

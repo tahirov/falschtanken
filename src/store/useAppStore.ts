@@ -12,6 +12,7 @@ export interface CaseState {
   allComplete: boolean
   eta: number
   price: number
+  orderId: string | null
   // intake step management
   currentStep: number
   // language
@@ -29,6 +30,7 @@ interface AppActions {
   setAllComplete: (v: boolean) => void
   setEta: (v: number) => void
   setPrice: (v: number) => void
+  setOrderId: (v: string | null) => void
   setCurrentStep: (v: number) => void
   setLang: (v: Lang) => void
   resetCase: () => void
@@ -45,6 +47,7 @@ const initialState: CaseState = {
   allComplete: false,
   eta: 0,
   price: 150,
+  orderId: null,
   currentStep: 0,
   lang: 'de',
 }
@@ -61,6 +64,7 @@ export const useAppStore = create<CaseState & AppActions>((set) => ({
   setAllComplete: (v) => set({ allComplete: v }),
   setEta: (v) => set({ eta: v }),
   setPrice: (v) => set({ price: v }),
+  setOrderId: (v) => set({ orderId: v }),
   setCurrentStep: (v) => set({ currentStep: v }),
   setLang: (v) => set({ lang: v }),
   resetCase: () => set(initialState),
