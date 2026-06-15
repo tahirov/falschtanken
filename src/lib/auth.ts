@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { supabase } from '@/lib/supabase'
-import type { Order } from '@/lib/orders'
+import type { Order, OrderStatus } from '@/lib/orders'
 
 interface AdminSession {
   token: string
@@ -45,6 +45,22 @@ export async function fetchOrders(token: string): Promise<{ orders: Order[]; err
   const { data, error } = await supabase.rpc('admin_orders', { p_token: token })
   if (error) return { orders: [], error: error.message }
   return { orders: (data ?? []) as Order[], error: null }
+}
+
+/** Change an order's status (admin only). Returns the updated order. */
+export async function updateOrderStatus(
+  token: string,
+  orderId: string,
+  status: OrderStatus,
+): Promise<{ order: Order | null; error: string | null }> {
+  const { data, error } = await supabase.rpc('admin_update_order_status', {
+    p_token: token,
+    p_order_id: orderId,
+    p_status: status,
+  })
+  if (error) return { order: null, error: error.message }
+  const row = Array.isArray(data) ? data[0] : data
+  return { order: (row ?? null) as Order | null, error: null }
 }
 
 /** End the current session server-side. */

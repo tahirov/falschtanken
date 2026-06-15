@@ -2,11 +2,20 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { RefreshCw, MapPin, Car, Clock, Inbox, Loader2 } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { RefreshCw, MapPin, Car, Clock, Inbox, Loader2, ChevronDown, Check } from 'lucide-react'
+import { toast } from 'sonner'
 import { useAppStore } from '@/store/useAppStore'
 import { translations } from '@/lib/i18n'
-import { useAuthStore, fetchOrders } from '@/lib/auth'
-import type { Order } from '@/lib/orders'
+import { useAuthStore, fetchOrders, updateOrderStatus } from '@/lib/auth'
+import type { Order, OrderStatus } from '@/lib/orders'
+
+const STATUSES: OrderStatus[] = ['requested', 'dispatched', 'completed', 'cancelled']
 
 const severityClass: Record<string, string> = {
   low: 'bg-green-100 text-green-800 border-green-200',
@@ -49,6 +58,18 @@ export function OrdersScreen() {
   useEffect(() => {
     load()
   }, [load])
+
+  async function handleStatusChange(orderId: string, status: OrderStatus) {
+    if (!session) return
+    const prev = orders
+    // Optimistic update; revert if the backend rejects it.
+    setOrders((list) => list.map((o) => (o.id === orderId ? { ...o, status } : o)))
+    const { error: err } = await updateOrderStatus(session.token, orderId, status)
+    if (err) {
+      setOrders(prev)
+      toast.error(t.ordersError)
+    }
+  }
 
   function formatDate(iso: string): string {
     const d = new Date(iso)
@@ -127,9 +148,27 @@ export function OrdersScreen() {
                 </div>
 
                 <div className="mt-2.5 flex items-center justify-between gap-2">
-                  <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${statusClass[order.status] ?? statusClass.requested}`}>
-                    {t.status[order.status]}
-                  </span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <button
+                          type="button"
+                          className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium transition-opacity hover:opacity-80 ${statusClass[order.status] ?? statusClass.requested}`}
+                        />
+                      }
+                    >
+                      {t.status[order.status]}
+                      <ChevronDown className="size-3" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      {STATUSES.map((s) => (
+                        <DropdownMenuItem key={s} onClick={() => handleStatusChange(order.id, s)}>
+                          <span className="flex-1">{t.status[s]}</span>
+                          {order.status === s && <Check className="size-3.5 text-primary" />}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   {order.litres && (
                     <span className="text-xs text-muted-foreground">{order.litres}</span>
                   )}

@@ -10,7 +10,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import { CheckCircle2, Phone, Send, Star, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -184,18 +183,16 @@ export function DispatchScreen() {
           {t.dispatch.callButton}
         </Button>
 
+        <Button
+          variant="ghost"
+          size="sm"
+          className="flex-1 gap-1.5 text-destructive hover:text-destructive"
+          onClick={() => setCancelOpen(true)}
+        >
+          {t.dispatch.cancelButton}
+        </Button>
+
         <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
-          <DialogTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="sm"
-                className="flex-1 gap-1.5 text-destructive hover:text-destructive"
-              />
-            }
-          >
-            {t.dispatch.cancelButton}
-          </DialogTrigger>
           <DialogContent showCloseButton={false}>
             <DialogHeader>
               <DialogTitle>{t.dispatch.cancelTitle}</DialogTitle>
