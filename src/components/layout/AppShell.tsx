@@ -12,6 +12,7 @@ interface AppShellProps {
 const routeTitles: Record<string, keyof typeof translations['de']['nav']['screenTitles']> = {
   '/': 'landing',
   '/intake': 'intake',
+  '/chat': 'intake',
   '/offer': 'offer',
   '/dispatch': 'dispatch',
   '/admin/orders': 'orders',

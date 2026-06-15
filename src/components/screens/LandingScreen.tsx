@@ -38,7 +38,7 @@ export function LandingScreen() {
   function handleVoiceButton() {
     setSituation('')
     setCurrentStep(0)
-    navigate('/intake')
+    navigate('/chat')
   }
 
   return (

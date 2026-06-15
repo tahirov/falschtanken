@@ -134,6 +134,13 @@ export const translations = {
       noResults: 'Keine passenden Aufträge.',
       resultsCount: (shown: number, total: number) => `${shown} von ${total}`,
     },
+    aiIntake: {
+      greeting: 'Schildern Sie kurz, was passiert ist. Ich stelle dann die nötigen Rückfragen.',
+      placeholder: 'Beschreiben Sie, was passiert ist…',
+      analyzing: 'Wird analysiert…',
+      error: 'Es gab ein Problem bei der Analyse. Bitte versuchen Sie es noch einmal.',
+      complete: 'Danke! Alle Informationen sind vollständig — einen Moment…',
+    },
   },
   en: {
     appName: 'Tankhilfe24',
@@ -268,6 +275,13 @@ export const translations = {
       noResults: 'No matching orders.',
       resultsCount: (shown: number, total: number) => `${shown} of ${total}`,
     },
+    aiIntake: {
+      greeting: 'Tell me briefly what happened. I will ask any follow-up questions needed.',
+      placeholder: 'Describe what happened…',
+      analyzing: 'Analyzing…',
+      error: 'Something went wrong during analysis. Please try again.',
+      complete: 'Thanks! I have everything I need — one moment…',
+    },
   },
   pl: {
     appName: 'Tankhilfe24',
@@ -401,6 +415,13 @@ export const translations = {
       sortPriceLow: 'Cena: rosnąco',
       noResults: 'Brak pasujących zleceń.',
       resultsCount: (shown: number, total: number) => `${shown} z ${total}`,
+    },
+    aiIntake: {
+      greeting: 'Opisz krótko, co się stało. Zadam potrzebne pytania uzupełniające.',
+      placeholder: 'Opisz, co się stało…',
+      analyzing: 'Analizuję…',
+      error: 'Wystąpił problem podczas analizy. Spróbuj ponownie.',
+      complete: 'Dziękuję! Mam wszystkie potrzebne informacje — chwila…',
     },
   },
 } as const
