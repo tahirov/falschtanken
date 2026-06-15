@@ -9,6 +9,7 @@ import {
 import { useAppStore } from '@/store/useAppStore'
 import { translations } from '@/lib/i18n'
 import { calculateSeverity, calculatePrice, generateEta } from '@/lib/pricingLogic'
+import { createOrder } from '@/lib/orders'
 
 export function OfferScreen() {
   const navigate = useNavigate()
@@ -28,10 +29,30 @@ export function OfferScreen() {
   }, [])
 
   const severity = calculateSeverity(store.engineStarted)
+  const [submitting, setSubmitting] = useState(false)
 
   function editStep(step: number) {
     store.setCurrentStep(step)
     navigate('/intake')
+  }
+
+  async function handleRequest() {
+    if (submitting) return
+    setSubmitting(true)
+    // Persist the case as an order (the admin log entry). Don't block the
+    // customer funnel on a backend hiccup — proceed to dispatch either way.
+    await createOrder({
+      situation: store.situation,
+      engine_started: store.engineStarted,
+      litres: store.litres,
+      location: store.location,
+      vehicle: store.vehicle,
+      severity,
+      price,
+      eta_minutes: eta,
+      lang,
+    })
+    navigate('/dispatch')
   }
 
   const summaryRows: { label: string; value: string; step: number; icon: React.ElementType }[] = [
@@ -134,7 +155,8 @@ export function OfferScreen() {
         <Button
           className="w-full"
           size="lg"
-          onClick={() => navigate('/dispatch')}
+          onClick={handleRequest}
+          disabled={submitting}
         >
           {t.offer.cta}
         </Button>

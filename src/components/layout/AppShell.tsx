@@ -1,6 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft } from 'lucide-react'
+import { AdminMenu } from '@/components/layout/AdminMenu'
 import { useAppStore } from '@/store/useAppStore'
 import { translations } from '@/lib/i18n'
 
@@ -13,6 +14,7 @@ const routeTitles: Record<string, keyof typeof translations['de']['nav']['screen
   '/intake': 'intake',
   '/offer': 'offer',
   '/dispatch': 'dispatch',
+  '/admin/orders': 'orders',
 }
 
 export function AppShell({ children }: AppShellProps) {
@@ -26,14 +28,17 @@ export function AppShell({ children }: AppShellProps) {
   const showBack = pathname !== '/'
 
   return (
-    <div className="min-h-dvh bg-background flex justify-center">
-      <div className="w-full max-w-[480px] min-h-dvh flex flex-col relative">
+    // Desktop: content sits in a phone-sized card on a very light grey page.
+    // Mobile: the card fills the screen (it is the only content area anyway).
+    <div className="min-h-dvh bg-muted flex justify-center sm:items-center sm:py-6">
+      <div className="w-full max-w-[480px] bg-background flex flex-col relative min-h-dvh sm:min-h-0 sm:h-[860px] sm:max-h-[calc(100dvh-3rem)] sm:rounded-2xl sm:border sm:shadow-xl sm:overflow-hidden">
         {/* Header */}
         <header
-          className="flex items-center justify-between px-4 h-14 border-b bg-background/95 sticky top-0 z-10 backdrop-blur-sm"
+          className="flex items-center justify-between px-3 h-14 border-b bg-background/95 sticky top-0 z-10 backdrop-blur-sm"
           style={{ paddingTop: 'env(safe-area-inset-top)' }}
         >
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <AdminMenu />
             {showBack && (
               <Button
                 variant="ghost"
@@ -44,7 +49,7 @@ export function AppShell({ children }: AppShellProps) {
                 <ChevronLeft className="size-5" />
               </Button>
             )}
-            <span className="font-heading font-bold text-base">{t.appName}</span>
+            <span className="font-heading font-bold text-base pl-1">{t.appName}</span>
           </div>
           {screenTitle ? (
             <span className="text-sm text-muted-foreground font-medium">{screenTitle}</span>
