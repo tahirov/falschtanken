@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import type { Severity } from '@/lib/pricingLogic'
+import type { Severity, Quote } from '@/lib/pricingLogic'
 
 export type OrderStatus = 'requested' | 'dispatched' | 'completed' | 'cancelled'
 
@@ -55,4 +55,33 @@ export async function createOrder(order: NewOrder): Promise<{ error: string | nu
     status: 'requested',
   })
   return { error: error?.message ?? null }
+}
+
+/**
+ * Submit a confirmed case via the `submit-order` edge function, which persists
+ * the order AND notifies the Telegram operator chat(s) with action buttons.
+ * Falls back to a plain anon insert so the funnel never loses an order if the
+ * function is unreachable.
+ */
+export async function submitOrder(order: NewOrder, quote: Quote): Promise<{ error: string | null }> {
+  const { data, error } = await supabase.functions.invoke('submit-order', {
+    body: {
+      order: {
+        situation: order.situation,
+        engine_started: order.engine_started,
+        litres: order.litres,
+        location: order.location,
+        vehicle: order.vehicle,
+        contact_name: order.contact_name,
+        contact_phone: order.contact_phone,
+        severity: order.severity,
+        price: order.price,
+        eta_minutes: order.eta_minutes,
+        lang: order.lang,
+      },
+      quote,
+    },
+  })
+  if (error || data?.error) return createOrder(order)
+  return { error: null }
 }

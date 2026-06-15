@@ -8,7 +8,7 @@ import { useAppStore } from '@/store/useAppStore'
 import { translations } from '@/lib/i18n'
 import { runIntakeAgent, type AgentMessage, type AgentFields } from '@/lib/intakeAgent'
 import { calculateQuote, type Quote } from '@/lib/pricingLogic'
-import { createOrder } from '@/lib/orders'
+import { submitOrder } from '@/lib/orders'
 
 export function AiIntakeScreen() {
   const navigate = useNavigate()
@@ -67,19 +67,22 @@ export function AiIntakeScreen() {
   async function confirmOrder() {
     if (!quote || submitting) return
     setSubmitting(true)
-    await createOrder({
-      situation: store.situation,
-      engine_started: store.engineStarted,
-      litres: store.litres,
-      location: store.location,
-      vehicle: store.vehicle,
-      contact_name: store.contactName.trim(),
-      contact_phone: store.contactPhone.trim(),
-      severity: quote.severity,
-      price: quote.total,
-      eta_minutes: quote.eta,
-      lang,
-    })
+    await submitOrder(
+      {
+        situation: store.situation,
+        engine_started: store.engineStarted,
+        litres: store.litres,
+        location: store.location,
+        vehicle: store.vehicle,
+        contact_name: store.contactName.trim(),
+        contact_phone: store.contactPhone.trim(),
+        severity: quote.severity,
+        price: quote.total,
+        eta_minutes: quote.eta,
+        lang,
+      },
+      quote,
+    )
     navigate('/dispatch')
   }
 
