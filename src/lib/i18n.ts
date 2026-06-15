@@ -78,6 +78,7 @@ export const translations = {
       cancelConfirm: 'Ja, stornieren',
       cancelAbort: 'Nein, weiter',
       callToast: 'Funktion folgt',
+      arrivalIn: 'Ankunft in',
       waiting: 'Warten auf Bestätigung des Technikers…',
       acceptedMessage: (name: string, eta: number) =>
         `Hallo, ich bin ${name}. Ich habe Ihren Auftrag angenommen und bin bereits auf dem Weg — Ankunft in ca. ${eta} Minuten. Bitte schalten Sie die Warnblinkanlage ein und bleiben Sie sicher im Fahrzeug.`,
@@ -244,6 +245,7 @@ export const translations = {
       cancelConfirm: 'Yes, cancel',
       cancelAbort: 'No, continue',
       callToast: 'Feature coming soon',
+      arrivalIn: 'Arriving in',
       waiting: 'Waiting for the technician to confirm…',
       acceptedMessage: (name: string, eta: number) =>
         `Hi, I'm ${name}. I've accepted your job and I'm already on my way — arriving in approx. ${eta} minutes. Please switch on your hazard lights and stay safe in the vehicle.`,
@@ -410,6 +412,7 @@ export const translations = {
       cancelConfirm: 'Tak, anuluj',
       cancelAbort: 'Nie, kontynuuj',
       callToast: 'Funkcja wkrótce',
+      arrivalIn: 'Przyjazd za',
       waiting: 'Czekamy na potwierdzenie technika…',
       acceptedMessage: (name: string, eta: number) =>
         `Cześć, jestem ${name}. Przyjąłem zlecenie i już jadę — przyjazd za ok. ${eta} min. Proszę włączyć światła awaryjne i bezpiecznie zaczekać w pojeździe.`,

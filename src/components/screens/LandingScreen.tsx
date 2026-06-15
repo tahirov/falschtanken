@@ -26,18 +26,14 @@ export function LandingScreen() {
   const lang = useAppStore((s) => s.lang)
   const setLang = useAppStore((s) => s.setLang)
   const setSituation = useAppStore((s) => s.setSituation)
-  const setCurrentStep = useAppStore((s) => s.setCurrentStep)
+  const setOrderId = useAppStore((s) => s.setOrderId)
   const t = translations[lang]
 
-  function handleSituationSelect(key: typeof situationKeys[number]) {
-    setSituation(t.situations[key].title)
-    setCurrentStep(1) // skip situation step, pre-filled
-    navigate('/intake')
-  }
-
-  function handleVoiceButton() {
-    setSituation('')
-    setCurrentStep(0)
+  // Both entry points lead into the same conversational AI intake. Picking a
+  // card just pre-seeds the fuel situation so the assistant doesn't re-ask it.
+  function startChat(situation: string) {
+    setOrderId(null)
+    setSituation(situation)
     navigate('/chat')
   }
 
@@ -75,7 +71,7 @@ export function LandingScreen() {
           <span className="absolute inline-flex size-20 rounded-full bg-primary opacity-20 animate-ping" />
           <Button
             size="lg"
-            onClick={handleVoiceButton}
+            onClick={() => startChat('')}
             className="relative size-20 rounded-full shadow-lg"
             aria-label={t.speakButton}
           >
@@ -101,7 +97,7 @@ export function LandingScreen() {
             <Card
               key={key}
               className="cursor-pointer hover:ring-2 hover:ring-primary/40 transition-all active:scale-[0.98]"
-              onClick={() => handleSituationSelect(key)}
+              onClick={() => startChat(situation.title)}
             >
               <CardContent className="flex flex-col gap-2 pt-4 pb-4">
                 <Icon className="size-6 text-primary" />

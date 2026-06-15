@@ -35,6 +35,7 @@ export function DispatchScreen() {
   const price = store.price || 150
 
   const [phase, setPhase] = useState<Phase>('pending')
+  const [remainingSec, setRemainingSec] = useState(0)
   const [inputText, setInputText] = useState('')
   const [messages, setMessages] = useState<Message[]>([])
   const [cancelOpen, setCancelOpen] = useState(false)
@@ -43,8 +44,34 @@ export function DispatchScreen() {
 
   const orderId = store.orderId
 
+  function playAcceptedChime() {
+    try {
+      const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+      if (!Ctx) return
+      const ctx = new Ctx()
+      const now = ctx.currentTime
+      ;[[880, 0], [1320, 0.18]].forEach(([freq, offset]) => {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = 'sine'
+        osc.frequency.value = freq
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        const start = now + offset
+        gain.gain.setValueAtTime(0.0001, start)
+        gain.gain.exponentialRampToValueAtTime(0.25, start + 0.04)
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.35)
+        osc.start(start)
+        osc.stop(start + 0.4)
+      })
+    } catch { /* audio is best-effort */ }
+    try { (navigator as Navigator & { vibrate?: (p: number[]) => void }).vibrate?.([120, 60, 120]) } catch { /* ignore */ }
+  }
+
   function connect() {
     setPhase('connected')
+    setRemainingSec(Math.max(1, eta) * 60)
+    playAcceptedChime()
     msgIdRef.current += 1
     setMessages([{
       id: msgIdRef.current,
@@ -80,6 +107,15 @@ export function DispatchScreen() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Tick the arrival countdown down once the technician is connected.
+  useEffect(() => {
+    if (phase !== 'connected') return
+    const iv = setInterval(() => setRemainingSec((s) => (s > 0 ? s - 1 : 0)), 1000)
+    return () => clearInterval(iv)
+  }, [phase])
+
+  const countdown = `${Math.floor(remainingSec / 60)}:${String(remainingSec % 60).padStart(2, '0')}`
 
   function sendMessage() {
     if (!inputText.trim()) return
@@ -151,7 +187,9 @@ export function DispatchScreen() {
             <p className="text-sm font-semibold text-green-900">
               {t.dispatch.accepted(technician.name)}
             </p>
-            <p className="text-xs text-green-700 mt-0.5">€{price} · ca. {eta} min</p>
+            <p className="text-xs text-green-700 mt-0.5 tabular-nums">
+              €{price} · {t.dispatch.arrivalIn} {countdown}
+            </p>
           </div>
         </div>
       </div>

@@ -22,10 +22,20 @@ export function AiIntakeScreen() {
   const [quote, setQuote] = useState<Quote | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
+  const seeded = useRef(false)
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, busy, quote])
+
+  // If the customer entered via a situation card, kick off the conversation
+  // with that fuel situation so the assistant acknowledges it and moves on.
+  useEffect(() => {
+    if (seeded.current) return
+    seeded.current = true
+    if (store.situation.trim()) runTurn(store.situation.trim())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function applyFields(f: AgentFields) {
     if (f.situation) store.setSituation(f.situation)
@@ -37,12 +47,11 @@ export function AiIntakeScreen() {
     if (f.contactPhone) store.setContactPhone(f.contactPhone)
   }
 
-  async function send() {
-    const text = input.trim()
-    if (!text || busy || quote) return
-    const next: AgentMessage[] = [...messages, { role: 'user', content: text }]
+  async function runTurn(text: string) {
+    const clean = text.trim()
+    if (!clean || busy || quote) return
+    const next: AgentMessage[] = [...messages, { role: 'user', content: clean }]
     setMessages(next)
-    setInput('')
     setBusy(true)
     const { result, error } = await runIntakeAgent(next, lang)
     setBusy(false)
@@ -62,6 +71,13 @@ export function AiIntakeScreen() {
       store.setEta(q.eta)
       setQuote(q)
     }
+  }
+
+  function send() {
+    if (!input.trim()) return
+    const text = input
+    setInput('')
+    runTurn(text)
   }
 
   async function confirmOrder() {
