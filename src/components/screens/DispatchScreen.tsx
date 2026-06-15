@@ -185,14 +185,16 @@ export function DispatchScreen() {
         </Button>
 
         <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
-          <DialogTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="flex-1 gap-1.5 text-destructive hover:text-destructive"
-            >
-              {t.dispatch.cancelButton}
-            </Button>
+          <DialogTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex-1 gap-1.5 text-destructive hover:text-destructive"
+              />
+            }
+          >
+            {t.dispatch.cancelButton}
           </DialogTrigger>
           <DialogContent showCloseButton={false}>
             <DialogHeader>

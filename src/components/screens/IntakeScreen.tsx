@@ -150,7 +150,7 @@ export function IntakeScreen() {
   }
 
   const progress = Math.round(((currentStep) / TOTAL) * 100)
-  const chips = t.intake.chips[activeKey] as string[]
+  const chips = t.intake.chips[activeKey] as readonly string[]
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
