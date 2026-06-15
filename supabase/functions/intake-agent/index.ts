@@ -108,44 +108,60 @@ Deno.serve(async (req) => {
 
   const chat = [{ role: 'system', content: systemPrompt(lang) }, ...history]
 
-  let res: Response
-  try {
-    res = await fetch(`${NVIDIA_BASE}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${NVIDIA_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: chat,
-        temperature: 0.2,
-        top_p: 0.9,
-        max_tokens: 2048,
-        // This is a reasoning model: left on, it can spend the whole token
-        // budget thinking and return an empty `content`. We only need the JSON.
-        chat_template_kwargs: { thinking: false },
-      }),
-    })
-  } catch (e) {
-    return json({ error: `upstream fetch failed: ${e}` }, 502)
+  // One model round-trip: returns parsed JSON, or null if the response was
+  // empty / unparseable (the reasoning model occasionally ignores the
+  // no-thinking hint and burns the whole budget on hidden reasoning).
+  async function attempt(): Promise<{ parsed: Partial<AgentResult> | null; httpError: string | null }> {
+    let res: Response
+    try {
+      res = await fetch(`${NVIDIA_BASE}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${NVIDIA_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: MODEL,
+          messages: chat,
+          temperature: 0.2,
+          top_p: 0.9,
+          // This reasoning model still spends ~1.5–2.2k tokens thinking even
+          // with thinking disabled; 2048 truncated it mid-reasoning and left
+          // `content` empty. A generous budget lets it finish and emit JSON.
+          max_tokens: 6144,
+          chat_template_kwargs: { thinking: false },
+        }),
+      })
+    } catch (e) {
+      return { parsed: null, httpError: `upstream fetch failed: ${e}` }
+    }
+    if (!res.ok) {
+      const txt = await res.text()
+      return { parsed: null, httpError: `model error ${res.status}: ${txt.slice(0, 200)}` }
+    }
+    const data = await res.json()
+    const msg = data.choices?.[0]?.message ?? {}
+    // Prefer the answer field; fall back to reasoning_content, whose tail still
+    // carries the final JSON if the model ignored the no-thinking hint.
+    const content: string = (msg.content && msg.content.trim() !== '' ? msg.content : msg.reasoning_content) ?? ''
+    try {
+      return { parsed: JSON.parse(extractJson(content)), httpError: null }
+    } catch {
+      return { parsed: null, httpError: null }
+    }
   }
 
-  if (!res.ok) {
-    const txt = await res.text()
-    return json({ error: `model error ${res.status}`, detail: txt.slice(0, 500) }, 502)
+  // Retry once on an empty/unparseable result — these are intermittent and a
+  // second roll almost always returns clean JSON.
+  let parsed: Partial<AgentResult> | null = null
+  let lastHttpError: string | null = null
+  for (let i = 0; i < 2 && !parsed; i++) {
+    const r = await attempt()
+    parsed = r.parsed
+    lastHttpError = r.httpError
   }
-
-  const data = await res.json()
-  const msg = data.choices?.[0]?.message ?? {}
-  // Prefer the answer field; fall back to reasoning_content, whose tail still
-  // carries the final JSON if the model ignored the no-thinking hint.
-  const content: string = (msg.content && msg.content.trim() !== '' ? msg.content : msg.reasoning_content) ?? ''
-  let parsed: Partial<AgentResult>
-  try {
-    parsed = JSON.parse(extractJson(content))
-  } catch {
-    return json({ error: 'could not parse model output', raw: content.slice(0, 800) }, 502)
+  if (!parsed) {
+    return json({ error: lastHttpError ?? 'could not parse model output' }, 502)
   }
 
   return json(normalize(parsed))

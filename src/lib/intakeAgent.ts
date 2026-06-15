@@ -31,10 +31,15 @@ export async function runIntakeAgent(
   messages: AgentMessage[],
   lang: string,
 ): Promise<{ result: AgentResult | null; error: string | null }> {
-  const { data, error } = await supabase.functions.invoke('intake-agent', {
-    body: { messages, lang },
-  })
-  if (error) return { result: null, error: error.message }
-  if (data?.error) return { result: null, error: String(data.error) }
-  return { result: data as AgentResult, error: null }
+  // The reasoning model fails intermittently; retry once on a transient error
+  // before surfacing it so the customer isn't dead-ended mid-conversation.
+  let lastError = 'unknown error'
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { data, error } = await supabase.functions.invoke('intake-agent', {
+      body: { messages, lang },
+    })
+    if (!error && data && !data.error) return { result: data as AgentResult, error: null }
+    lastError = error?.message ?? String(data?.error ?? 'unknown error')
+  }
+  return { result: null, error: lastError }
 }
