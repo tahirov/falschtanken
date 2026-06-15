@@ -3,12 +3,20 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
-import { Car, Send, Clock, Loader2 } from 'lucide-react'
+import { Car, Send, Clock, Loader2, Mic, Square } from 'lucide-react'
+import { toast } from 'sonner'
 import { useAppStore } from '@/store/useAppStore'
 import { translations } from '@/lib/i18n'
-import { runIntakeAgent, type AgentMessage, type AgentFields } from '@/lib/intakeAgent'
+import {
+  runIntakeAgent,
+  runIntakeAgentVoice,
+  type AgentMessage,
+  type AgentFields,
+  type AgentResult,
+} from '@/lib/intakeAgent'
 import { calculateQuote, type Quote } from '@/lib/pricingLogic'
 import { submitOrder } from '@/lib/orders'
+import { WavRecorder } from '@/lib/audioRecorder'
 
 export function AiIntakeScreen() {
   const navigate = useNavigate()
@@ -21,8 +29,10 @@ export function AiIntakeScreen() {
   const [busy, setBusy] = useState(false)
   const [quote, setQuote] = useState<Quote | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [recording, setRecording] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
   const seeded = useRef(false)
+  const recorderRef = useRef<WavRecorder | null>(null)
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -47,6 +57,21 @@ export function AiIntakeScreen() {
     if (f.contactPhone) store.setContactPhone(f.contactPhone)
   }
 
+  // Apply a successful agent result: persist fields and, if the case is now
+  // complete, build the in-thread quote.
+  function applyAgentResult(result: AgentResult) {
+    applyFields(result.fields)
+    if (result.complete) {
+      const q = calculateQuote(
+        result.fields.engineStarted ?? store.engineStarted,
+        result.fields.litres ?? store.litres,
+      )
+      store.setPrice(q.total)
+      store.setEta(q.eta)
+      setQuote(q)
+    }
+  }
+
   async function runTurn(text: string) {
     const clean = text.trim()
     if (!clean || busy || quote) return
@@ -59,17 +84,53 @@ export function AiIntakeScreen() {
       setMessages([...next, { role: 'assistant', content: t.aiIntake.error }])
       return
     }
-    applyFields(result.fields)
+    applyAgentResult(result)
     setMessages([...next, { role: 'assistant', content: result.reply || '…' }])
-    if (result.complete) {
-      // Build the quote from the freshly collected case and show it in-thread.
-      const q = calculateQuote(
-        result.fields.engineStarted ?? store.engineStarted,
-        result.fields.litres ?? store.litres,
-      )
-      store.setPrice(q.total)
-      store.setEta(q.eta)
-      setQuote(q)
+  }
+
+  // Voice turn: send the audio, then store the returned transcript as the
+  // user's text bubble so the rest of the conversation stays text-only.
+  async function runVoiceTurn(wavBase64: string) {
+    if (busy || quote) return
+    const history = messages
+    setBusy(true)
+    const { result, error } = await runIntakeAgentVoice(history, wavBase64, lang)
+    setBusy(false)
+    const userBubble = result?.transcript || `🎤 ${t.aiIntake.voiceNote}`
+    if (error || !result) {
+      setMessages([
+        ...history,
+        { role: 'user', content: userBubble },
+        { role: 'assistant', content: t.aiIntake.error },
+      ])
+      return
+    }
+    applyAgentResult(result)
+    setMessages([
+      ...history,
+      { role: 'user', content: userBubble },
+      { role: 'assistant', content: result.reply || '…' },
+    ])
+  }
+
+  async function toggleRecord() {
+    if (busy || quote) return
+    if (recording) {
+      const rec = recorderRef.current
+      recorderRef.current = null
+      setRecording(false)
+      if (!rec) return
+      const wav = await rec.stop()
+      runVoiceTurn(wav)
+      return
+    }
+    try {
+      const rec = new WavRecorder()
+      await rec.start()
+      recorderRef.current = rec
+      setRecording(true)
+    } catch {
+      toast.error(t.aiIntake.micError)
     }
   }
 
@@ -165,15 +226,36 @@ export function AiIntakeScreen() {
         </div>
       ) : (
         <div className="px-4 pb-4 pt-2 border-t flex gap-2 items-center">
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={t.aiIntake.placeholder}
-            className="flex-1 h-10"
+          {recording ? (
+            <div className="flex-1 flex items-center gap-2 h-10 px-3 rounded-md bg-muted">
+              <span className="size-2.5 rounded-full bg-red-500 animate-pulse shrink-0" />
+              <span className="text-sm text-muted-foreground">{t.aiIntake.listening}</span>
+            </div>
+          ) : (
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={t.aiIntake.placeholder}
+              className="flex-1 h-10"
+              disabled={busy}
+              onKeyDown={(e) => e.key === 'Enter' && send()}
+            />
+          )}
+          <Button
+            size="icon-sm"
+            variant={recording ? 'destructive' : 'ghost'}
+            onClick={toggleRecord}
             disabled={busy}
-            onKeyDown={(e) => e.key === 'Enter' && send()}
-          />
-          <Button size="icon-sm" onClick={send} disabled={busy || !input.trim()} aria-label="Send">
+            aria-label={recording ? 'Stop recording' : 'Record voice message'}
+          >
+            {recording ? <Square className="size-4" /> : <Mic className="size-4" />}
+          </Button>
+          <Button
+            size="icon-sm"
+            onClick={send}
+            disabled={busy || recording || !input.trim()}
+            aria-label="Send"
+          >
             <Send className="size-4" />
           </Button>
         </div>

@@ -52,9 +52,10 @@ Read the ENTIRE conversation EVERY turn and re-extract every field already provi
 - Sound like a calm human, not a form. If you have to ask about the SAME field again because the earlier answer was missing, unclear or invalid, do NOT repeat your previous question word-for-word — briefly acknowledge what they said and rephrase casually and naturally (and say what was unclear, e.g. that the phone number looked incomplete or the location was too vague).
 - As soon as you learn the customer's first name, start addressing them by it from your very next reply onward — begin replies with their name where it reads naturally (e.g. "Danke, Anna — ..." / "Anna, ..."). Always greet them by name on the turn right after they give it, and use it in your final confirmation. Keep it warm and natural, not robotic.
 - When all seven fields are known and valid, set "complete" to true and write a short, warm confirmation that their request is ready and help can be arranged.
+- VOICE MESSAGES: when the latest user message contains audio, you MUST first transcribe it and put the clean, verbatim transcription (in the spoken language) into the "transcript" field — this is required, never leave it null for an audio turn. Then extract the fields from that transcription exactly as you would from typed text. For purely typed messages, set "transcript" to null.
 
 Output ONLY a single minified JSON object, no markdown, no commentary, no <think> tags:
-{"fields":{"situation":string|null,"engineStarted":string|null,"litres":string|null,"location":string|null,"vehicle":string|null,"contactName":string|null,"contactPhone":string|null},"missing":string[],"complete":boolean,"reply":string}`
+{"fields":{"situation":string|null,"engineStarted":string|null,"litres":string|null,"location":string|null,"vehicle":string|null,"contactName":string|null,"contactPhone":string|null},"missing":string[],"complete":boolean,"reply":string,"transcript":string|null}`
 }
 
 /** Pull a JSON object out of a possibly-reasoning model response. */
@@ -73,6 +74,7 @@ interface AgentResult {
   missing: string[]
   complete: boolean
   reply: string
+  transcript: string | null
 }
 
 function normalize(parsed: Partial<AgentResult>): AgentResult {
@@ -87,6 +89,10 @@ function normalize(parsed: Partial<AgentResult>): AgentResult {
     missing,
     complete: missing.length === 0,
     reply: typeof parsed.reply === 'string' ? parsed.reply : '',
+    transcript:
+      typeof parsed.transcript === 'string' && parsed.transcript.trim() !== ''
+        ? parsed.transcript.trim()
+        : null,
   }
 }
 
@@ -95,7 +101,7 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405)
   if (!NVIDIA_API_KEY) return json({ error: 'NVIDIA_API_KEY not configured' }, 500)
 
-  let payload: { messages?: { role: string; content: string }[]; lang?: string }
+  let payload: { messages?: { role: string; content: unknown }[]; lang?: string }
   try {
     payload = await req.json()
   } catch {
@@ -103,8 +109,15 @@ Deno.serve(async (req) => {
   }
 
   const lang = payload.lang ?? 'de'
+  // Content is a string for typed turns, or an OpenAI-style content array
+  // (text + audio_url part) for a voice turn — pass both through verbatim.
   const history = (payload.messages ?? [])
-    .filter((m) => m && typeof m.content === 'string' && (m.role === 'user' || m.role === 'assistant'))
+    .filter(
+      (m) =>
+        m &&
+        (m.role === 'user' || m.role === 'assistant') &&
+        (typeof m.content === 'string' || Array.isArray(m.content)),
+    )
     .map((m) => ({ role: m.role, content: m.content }))
 
   const chat = [{ role: 'system', content: systemPrompt(lang) }, ...history]

@@ -145,6 +145,9 @@ export const translations = {
       greeting: 'Schildern Sie kurz, was passiert ist. Ich stelle dann die nötigen Rückfragen.',
       placeholder: 'Beschreiben Sie, was passiert ist…',
       analyzing: 'Denkt nach',
+      listening: 'Ich höre zu…',
+      voiceNote: 'Sprachnachricht',
+      micError: 'Mikrofon konnte nicht gestartet werden. Bitte erlauben Sie den Zugriff.',
       error: 'Es gab ein Problem bei der Analyse. Bitte versuchen Sie es noch einmal.',
       complete: 'Danke! Alle Informationen sind vollständig — einen Moment…',
       quote: {
@@ -312,6 +315,9 @@ export const translations = {
       greeting: 'Tell me briefly what happened. I will ask any follow-up questions needed.',
       placeholder: 'Describe what happened…',
       analyzing: 'Thinking',
+      listening: 'Listening…',
+      voiceNote: 'Voice message',
+      micError: 'Could not start the microphone. Please allow access.',
       error: 'Something went wrong during analysis. Please try again.',
       complete: 'Thanks! I have everything I need — one moment…',
       quote: {
@@ -479,6 +485,9 @@ export const translations = {
       greeting: 'Opisz krótko, co się stało. Zadam potrzebne pytania uzupełniające.',
       placeholder: 'Opisz, co się stało…',
       analyzing: 'Myślę',
+      listening: 'Słucham…',
+      voiceNote: 'Wiadomość głosowa',
+      micError: 'Nie można uruchomić mikrofonu. Zezwól na dostęp.',
       error: 'Wystąpił problem podczas analizy. Spróbuj ponownie.',
       complete: 'Dziękuję! Mam wszystkie potrzebne informacje — chwila…',
       quote: {
