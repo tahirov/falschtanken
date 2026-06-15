@@ -133,3 +133,25 @@
     cursor: pointer;
     }
 }
+
+/* Shimmering "thinking" text used while the AI intake agent is working. */
+@keyframes intake-shimmer {
+  0% { background-position: 150% 0; }
+  100% { background-position: -50% 0; }
+}
+
+.shimmer-text {
+  background: linear-gradient(
+    100deg,
+    var(--muted-foreground) 0%,
+    var(--muted-foreground) 35%,
+    var(--foreground) 50%,
+    var(--muted-foreground) 65%,
+    var(--muted-foreground) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: intake-shimmer 1.6s linear infinite;
+}

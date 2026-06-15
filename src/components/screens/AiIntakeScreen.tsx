@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Car, Send, Loader2 } from 'lucide-react'
+import { Car, Send } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { translations } from '@/lib/i18n'
 import { runIntakeAgent, type AgentMessage, type AgentFields } from '@/lib/intakeAgent'
@@ -84,9 +84,13 @@ export function AiIntakeScreen() {
             <div className="size-7 rounded-full bg-primary flex items-center justify-center shrink-0 mr-2 mt-0.5">
               <Car className="size-3.5 text-primary-foreground" />
             </div>
-            <div className="bg-muted rounded-2xl rounded-bl-sm px-4 py-2.5 flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" />
-              {t.aiIntake.analyzing}
+            <div className="bg-muted rounded-2xl rounded-bl-sm px-4 py-2.5 flex items-center gap-1.5 text-sm">
+              <span className="shimmer-text font-medium">{t.aiIntake.analyzing}</span>
+              <span className="flex gap-0.5">
+                <span className="size-1 rounded-full bg-muted-foreground/70 animate-bounce [animation-delay:-0.3s]" />
+                <span className="size-1 rounded-full bg-muted-foreground/70 animate-bounce [animation-delay:-0.15s]" />
+                <span className="size-1 rounded-full bg-muted-foreground/70 animate-bounce" />
+              </span>
             </div>
           </div>
         )}

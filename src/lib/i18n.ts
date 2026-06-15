@@ -137,7 +137,7 @@ export const translations = {
     aiIntake: {
       greeting: 'Schildern Sie kurz, was passiert ist. Ich stelle dann die nötigen Rückfragen.',
       placeholder: 'Beschreiben Sie, was passiert ist…',
-      analyzing: 'Wird analysiert…',
+      analyzing: 'Denkt nach',
       error: 'Es gab ein Problem bei der Analyse. Bitte versuchen Sie es noch einmal.',
       complete: 'Danke! Alle Informationen sind vollständig — einen Moment…',
     },
@@ -278,7 +278,7 @@ export const translations = {
     aiIntake: {
       greeting: 'Tell me briefly what happened. I will ask any follow-up questions needed.',
       placeholder: 'Describe what happened…',
-      analyzing: 'Analyzing…',
+      analyzing: 'Thinking',
       error: 'Something went wrong during analysis. Please try again.',
       complete: 'Thanks! I have everything I need — one moment…',
     },
@@ -419,7 +419,7 @@ export const translations = {
     aiIntake: {
       greeting: 'Opisz krótko, co się stało. Zadam potrzebne pytania uzupełniające.',
       placeholder: 'Opisz, co się stało…',
-      analyzing: 'Analizuję…',
+      analyzing: 'Myślę',
       error: 'Wystąpił problem podczas analizy. Spróbuj ponownie.',
       complete: 'Dziękuję! Mam wszystkie potrzebne informacje — chwila…',
     },
