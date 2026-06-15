@@ -2,10 +2,13 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Car, Send } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Car, Send, Clock, Loader2 } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { translations } from '@/lib/i18n'
 import { runIntakeAgent, type AgentMessage, type AgentFields } from '@/lib/intakeAgent'
+import { calculateQuote, type Quote } from '@/lib/pricingLogic'
+import { createOrder } from '@/lib/orders'
 
 export function AiIntakeScreen() {
   const navigate = useNavigate()
@@ -16,12 +19,13 @@ export function AiIntakeScreen() {
   const [messages, setMessages] = useState<AgentMessage[]>([])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
-  const [done, setDone] = useState(false)
+  const [quote, setQuote] = useState<Quote | null>(null)
+  const [submitting, setSubmitting] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, busy])
+  }, [messages, busy, quote])
 
   function applyFields(f: AgentFields) {
     if (f.situation) store.setSituation(f.situation)
@@ -35,7 +39,7 @@ export function AiIntakeScreen() {
 
   async function send() {
     const text = input.trim()
-    if (!text || busy || done) return
+    if (!text || busy || quote) return
     const next: AgentMessage[] = [...messages, { role: 'user', content: text }]
     setMessages(next)
     setInput('')
@@ -49,10 +53,34 @@ export function AiIntakeScreen() {
     applyFields(result.fields)
     setMessages([...next, { role: 'assistant', content: result.reply || '…' }])
     if (result.complete) {
-      setDone(true)
-      store.setAllComplete(true)
-      setTimeout(() => navigate('/offer'), 900)
+      // Build the quote from the freshly collected case and show it in-thread.
+      const q = calculateQuote(
+        result.fields.engineStarted ?? store.engineStarted,
+        result.fields.litres ?? store.litres,
+      )
+      store.setPrice(q.total)
+      store.setEta(q.eta)
+      setQuote(q)
     }
+  }
+
+  async function confirmOrder() {
+    if (!quote || submitting) return
+    setSubmitting(true)
+    await createOrder({
+      situation: store.situation,
+      engine_started: store.engineStarted,
+      litres: store.litres,
+      location: store.location,
+      vehicle: store.vehicle,
+      contact_name: store.contactName.trim(),
+      contact_phone: store.contactPhone.trim(),
+      severity: quote.severity,
+      price: quote.total,
+      eta_minutes: quote.eta,
+      lang,
+    })
+    navigate('/dispatch')
   }
 
   // The static greeting leads the thread; the live conversation follows.
@@ -79,6 +107,7 @@ export function AiIntakeScreen() {
             </div>
           </div>
         ))}
+
         {busy && (
           <div className="flex justify-start">
             <div className="size-7 rounded-full bg-primary flex items-center justify-center shrink-0 mr-2 mt-0.5">
@@ -94,27 +123,88 @@ export function AiIntakeScreen() {
             </div>
           </div>
         )}
+
+        {quote && <QuoteCard quote={quote} />}
+
         <div ref={endRef} />
       </div>
 
-      <div className="px-4 pb-4 pt-2 border-t flex gap-2 items-center">
-        <Input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder={t.aiIntake.placeholder}
-          className="flex-1 h-10"
-          disabled={busy || done}
-          onKeyDown={(e) => e.key === 'Enter' && send()}
-        />
-        <Button
-          size="icon-sm"
-          onClick={send}
-          disabled={busy || done || !input.trim()}
-          aria-label="Send"
-        >
-          <Send className="size-4" />
-        </Button>
-      </div>
+      {quote ? (
+        <div className="px-4 pb-4 pt-2 border-t space-y-2">
+          <Button className="w-full" size="lg" onClick={confirmOrder} disabled={submitting}>
+            {submitting ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="size-4 animate-spin" />
+                {t.aiIntake.quote.confirming}
+              </span>
+            ) : (
+              t.aiIntake.quote.confirm
+            )}
+          </Button>
+          <p className="text-center text-xs text-muted-foreground">{t.aiIntake.quote.disclaimer}</p>
+        </div>
+      ) : (
+        <div className="px-4 pb-4 pt-2 border-t flex gap-2 items-center">
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={t.aiIntake.placeholder}
+            className="flex-1 h-10"
+            disabled={busy}
+            onKeyDown={(e) => e.key === 'Enter' && send()}
+          />
+          <Button size="icon-sm" onClick={send} disabled={busy || !input.trim()} aria-label="Send">
+            <Send className="size-4" />
+          </Button>
+        </div>
+      )}
     </div>
+  )
+}
+
+function QuoteCard({ quote }: { quote: Quote }) {
+  const lang = useAppStore((s) => s.lang)
+  const q = translations[lang].aiIntake.quote
+
+  const lineLabel: Record<Quote['lines'][number]['key'], string> = {
+    removal: q.lineRemoval,
+    disposal: q.lineDisposal(quote.litres),
+    driving: q.lineDriving,
+    labour: q.lineLabour(quote.labourHours, quote.hourlyRate),
+  }
+
+  return (
+    <Card className="ml-9">
+      <CardContent className="py-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold">{q.title}</p>
+          <span className="inline-flex items-center gap-1 text-xs text-primary font-medium">
+            <Clock className="size-3.5" />
+            {q.arrival(quote.eta)}
+          </span>
+        </div>
+
+        <div className="space-y-1.5">
+          {quote.lines.map((line) => (
+            <div key={line.key} className="flex items-baseline justify-between gap-3 text-sm">
+              <span className="text-muted-foreground">
+                {lineLabel[line.key]}
+                {line.key === 'labour' && (
+                  <span className="ml-1.5 inline-block rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-foreground/70">
+                    {q.rateNotes[quote.rateNote]}
+                  </span>
+                )}
+              </span>
+              <span className="font-medium tabular-nums whitespace-nowrap">€{line.amount}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-center justify-between border-t pt-2.5">
+          <span className="text-sm font-semibold">{q.total}</span>
+          <span className="font-heading text-2xl font-bold tabular-nums">€{quote.total}</span>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
