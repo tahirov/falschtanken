@@ -140,6 +140,25 @@
   100% { background-position: -50% 0; }
 }
 
+/* Subtle animated purple ↔ bordeaux gradient for the landing headline. */
+@keyframes headline-gradient {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+.gradient-headline {
+  background-image: linear-gradient(90deg, #6d28d9, #9f1239, #6d28d9);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: headline-gradient 7s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gradient-headline { animation: none; }
+}
+
 .shimmer-text {
   background: linear-gradient(
     100deg,
