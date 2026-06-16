@@ -43,7 +43,13 @@ export function AiIntakeScreen() {
   useEffect(() => {
     if (seeded.current) return
     seeded.current = true
-    if (store.situation.trim()) runTurn(store.situation.trim())
+    if (store.seedAudio) {
+      const audio = store.seedAudio
+      store.setSeedAudio(null)
+      runVoiceTurn(audio)
+    } else if (store.situation.trim()) {
+      runTurn(store.situation.trim())
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

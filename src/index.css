@@ -140,6 +140,12 @@
   100% { background-position: -50% 0; }
 }
 
+/* Live waveform bars shown while recording a voice message. */
+@keyframes wavebar {
+  0%, 100% { transform: scaleY(0.25); }
+  50% { transform: scaleY(1); }
+}
+
 .shimmer-text {
   background: linear-gradient(
     100deg,

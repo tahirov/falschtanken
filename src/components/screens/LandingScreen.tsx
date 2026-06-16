@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Fuel, Globe, Mic, ArrowUp } from 'lucide-react'
+import { Fuel, Globe, Mic, ArrowUp, X, Check } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { translations, type Lang } from '@/lib/i18n'
+import { WavRecorder } from '@/lib/audioRecorder'
+
+const MAX_REC_SECONDS = 60
 
 const situationKeys = [
   'benzinInDiesel',
@@ -21,7 +25,12 @@ export function LandingScreen() {
   const setLang = useAppStore((s) => s.setLang)
   const setSituation = useAppStore((s) => s.setSituation)
   const setOrderId = useAppStore((s) => s.setOrderId)
+  const setSeedAudio = useAppStore((s) => s.setSeedAudio)
   const t = translations[lang]
+
+  const [recording, setRecording] = useState(false)
+  const [recSec, setRecSec] = useState(0)
+  const recorderRef = useRef<WavRecorder | null>(null)
 
   const [text, setText] = useState('')
   const [typed, setTyped] = useState('')
@@ -87,6 +96,49 @@ export function LandingScreen() {
     navigate('/chat')
   }
 
+  async function startRecording() {
+    if (recording) return
+    try {
+      const rec = new WavRecorder()
+      await rec.start()
+      recorderRef.current = rec
+      setRecSec(0)
+      setRecording(true)
+    } catch {
+      toast.error(t.aiIntake.micError)
+    }
+  }
+
+  function cancelRecording() {
+    recorderRef.current?.cancel()
+    recorderRef.current = null
+    setRecording(false)
+    setRecSec(0)
+  }
+
+  async function confirmRecording() {
+    const rec = recorderRef.current
+    if (!rec) return
+    recorderRef.current = null
+    setRecording(false)
+    const wav = await rec.stop()
+    setOrderId(null)
+    setSituation('')
+    setSeedAudio(wav)
+    navigate('/chat')
+  }
+
+  // Recording timer; auto-finish at the max length.
+  useEffect(() => {
+    if (!recording) return
+    const id = setInterval(() => setRecSec((s) => s + 1), 1000)
+    return () => clearInterval(id)
+  }, [recording])
+  useEffect(() => {
+    if (recording && recSec >= MAX_REC_SECONDS) confirmRecording()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recSec, recording])
+
   return (
     <div className="flex flex-col flex-1 overflow-y-auto">
       {/* Language switcher */}
@@ -117,7 +169,24 @@ export function LandingScreen() {
       {/* Prompt box */}
       <div className="px-5">
         <div className="rounded-2xl border bg-card shadow-sm p-2 focus-within:ring-2 focus-within:ring-primary/40 transition">
-          <Textarea
+          {recording ? (
+            <div className="flex items-center gap-2 px-3 min-h-[72px]">
+              <span className="size-2.5 rounded-full bg-red-500 animate-pulse shrink-0" />
+              <div className="flex-1 flex items-center gap-[3px] h-8 overflow-hidden">
+                {Array.from({ length: 28 }).map((_, i) => (
+                  <span
+                    key={i}
+                    className="w-[3px] h-6 rounded-full bg-primary/60 origin-center"
+                    style={{ animation: `wavebar 0.9s ease-in-out ${(i % 7) * 0.1}s infinite` }}
+                  />
+                ))}
+              </div>
+              <span className="text-sm tabular-nums text-muted-foreground shrink-0">
+                {Math.floor(recSec / 60)}:{String(recSec % 60).padStart(2, '0')}
+              </span>
+            </div>
+          ) : (
+            <Textarea
             ref={inputRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -131,24 +200,49 @@ export function LandingScreen() {
               }
             }}
           />
+          )}
           <div className="flex items-center justify-end gap-2 px-1 pb-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => start('')}
-              aria-label={t.speakButton}
-              className="rounded-full text-muted-foreground"
-            >
-              <Mic className="size-5" />
-            </Button>
-            <Button
-              size="icon"
-              onClick={() => start(text.trim())}
-              aria-label="Start"
-              className="rounded-full"
-            >
-              <ArrowUp className="size-5" />
-            </Button>
+            {recording ? (
+              <>
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  onClick={cancelRecording}
+                  aria-label="Cancel recording"
+                  className="rounded-full"
+                >
+                  <X className="size-5" />
+                </Button>
+                <Button
+                  size="icon"
+                  onClick={confirmRecording}
+                  aria-label="Send voice message"
+                  className="rounded-full"
+                >
+                  <Check className="size-5" />
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={startRecording}
+                  aria-label={t.speakButton}
+                  className="rounded-full text-muted-foreground"
+                >
+                  <Mic className="size-5" />
+                </Button>
+                <Button
+                  size="icon"
+                  onClick={() => start(text.trim())}
+                  aria-label="Start"
+                  className="rounded-full"
+                >
+                  <ArrowUp className="size-5" />
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>

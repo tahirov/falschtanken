@@ -13,6 +13,8 @@ export interface CaseState {
   eta: number
   price: number
   orderId: string | null
+  /** Base64 WAV recorded on the landing page, to be processed by the chat. */
+  seedAudio: string | null
   // intake step management
   currentStep: number
   // language
@@ -31,6 +33,7 @@ interface AppActions {
   setEta: (v: number) => void
   setPrice: (v: number) => void
   setOrderId: (v: string | null) => void
+  setSeedAudio: (v: string | null) => void
   setCurrentStep: (v: number) => void
   setLang: (v: Lang) => void
   resetCase: () => void
@@ -48,6 +51,7 @@ const initialState: CaseState = {
   eta: 0,
   price: 150,
   orderId: null,
+  seedAudio: null,
   currentStep: 0,
   lang: 'de',
 }
@@ -65,6 +69,7 @@ export const useAppStore = create<CaseState & AppActions>((set) => ({
   setEta: (v) => set({ eta: v }),
   setPrice: (v) => set({ price: v }),
   setOrderId: (v) => set({ orderId: v }),
+  setSeedAudio: (v) => set({ seedAudio: v }),
   setCurrentStep: (v) => set({ currentStep: v }),
   setLang: (v) => set({ lang: v }),
   resetCase: () => set(initialState),
