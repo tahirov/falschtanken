@@ -12,6 +12,8 @@ export class WavRecorder {
   private stream: MediaStream | null = null
   private source: MediaStreamAudioSourceNode | null = null
   private processor: ScriptProcessorNode | null = null
+  private analyser: AnalyserNode | null = null
+  private levelBuf: Uint8Array<ArrayBuffer> | null = null
   private chunks: Float32Array[] = []
   private sampleRate = 44100
 
@@ -22,6 +24,11 @@ export class WavRecorder {
     this.ctx = new Ctx()
     this.sampleRate = this.ctx.sampleRate
     this.source = this.ctx.createMediaStreamSource(this.stream)
+    // Analyser taps the live signal for the waveform meter (no recording role).
+    this.analyser = this.ctx.createAnalyser()
+    this.analyser.fftSize = 512
+    this.levelBuf = new Uint8Array(this.analyser.fftSize)
+    this.source.connect(this.analyser)
     this.processor = this.ctx.createScriptProcessor(4096, 1, 1)
     this.chunks = []
     this.processor.onaudioprocess = (e) => {
@@ -43,6 +50,18 @@ export class WavRecorder {
     const merged = mergeChunks(this.chunks)
     const down = downsample(merged, this.sampleRate, TARGET_RATE)
     return toBase64(encodeWav(down, TARGET_RATE))
+  }
+
+  /** Current input loudness as RMS amplitude (~0 silent … ~1 very loud). */
+  level(): number {
+    if (!this.analyser || !this.levelBuf) return 0
+    this.analyser.getByteTimeDomainData(this.levelBuf)
+    let sum = 0
+    for (let i = 0; i < this.levelBuf.length; i++) {
+      const v = (this.levelBuf[i] - 128) / 128
+      sum += v * v
+    }
+    return Math.sqrt(sum / this.levelBuf.length)
   }
 
   cancel(): void {

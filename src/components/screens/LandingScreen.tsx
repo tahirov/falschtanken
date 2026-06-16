@@ -9,6 +9,7 @@ import { translations, type Lang } from '@/lib/i18n'
 import { WavRecorder } from '@/lib/audioRecorder'
 
 const MAX_REC_SECONDS = 60
+const BAR_COUNT = 56
 
 const situationKeys = [
   'benzinInDiesel',
@@ -30,6 +31,7 @@ export function LandingScreen() {
 
   const [recording, setRecording] = useState(false)
   const [recSec, setRecSec] = useState(0)
+  const [levels, setLevels] = useState<number[]>(() => Array(BAR_COUNT).fill(0))
   const recorderRef = useRef<WavRecorder | null>(null)
 
   const [text, setText] = useState('')
@@ -134,6 +136,24 @@ export function LandingScreen() {
     const id = setInterval(() => setRecSec((s) => s + 1), 1000)
     return () => clearInterval(id)
   }, [recording])
+
+  // Live waveform: sample the real mic level each frame and scroll it in.
+  useEffect(() => {
+    if (!recording) {
+      setLevels(Array(BAR_COUNT).fill(0))
+      return
+    }
+    const history = Array(BAR_COUNT).fill(0)
+    let raf = 0
+    const loop = () => {
+      history.push(recorderRef.current?.level() ?? 0)
+      history.shift()
+      setLevels(history.slice())
+      raf = requestAnimationFrame(loop)
+    }
+    raf = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(raf)
+  }, [recording])
   useEffect(() => {
     if (recording && recSec >= MAX_REC_SECONDS) confirmRecording()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -172,12 +192,12 @@ export function LandingScreen() {
           {recording ? (
             <div className="flex items-center gap-2 px-3 min-h-[72px]">
               <span className="size-2.5 rounded-full bg-red-500 animate-pulse shrink-0" />
-              <div className="flex-1 flex items-center gap-[3px] h-8 overflow-hidden">
-                {Array.from({ length: 28 }).map((_, i) => (
+              <div className="flex-1 flex items-center justify-end gap-[2px] h-8 overflow-hidden">
+                {levels.map((lvl, i) => (
                   <span
                     key={i}
-                    className="w-[3px] h-6 rounded-full bg-primary/60 origin-center"
-                    style={{ animation: `wavebar 0.9s ease-in-out ${(i % 7) * 0.1}s infinite` }}
+                    className="w-[2px] rounded-full bg-primary/70 transition-[height] duration-75 ease-out shrink-0"
+                    style={{ height: `${Math.max(2, Math.min(28, 2 + lvl * 140))}px` }}
                   />
                 ))}
               </div>
