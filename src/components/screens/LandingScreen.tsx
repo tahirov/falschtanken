@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -27,6 +27,18 @@ export function LandingScreen() {
   const [typed, setTyped] = useState('')
   const [cursorOn, setCursorOn] = useState(true)
   const placeholders = t.promptPlaceholders
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  // Picking a suggestion fills the box (doesn't auto-submit) so the user can
+  // tweak it or just press Enter / the arrow to start.
+  function fillFromPill(value: string) {
+    setText(value)
+    const el = inputRef.current
+    if (el) {
+      el.focus()
+      el.setSelectionRange(value.length, value.length)
+    }
+  }
 
   // Typewriter placeholder: type a phrase in, hold, delete it, move to the next.
   useEffect(() => {
@@ -106,6 +118,7 @@ export function LandingScreen() {
       <div className="px-5">
         <div className="rounded-2xl border bg-card shadow-sm p-2 focus-within:ring-2 focus-within:ring-primary/40 transition">
           <Textarea
+            ref={inputRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder={`${typed}${cursorOn ? '▍' : ' '}`}
@@ -149,7 +162,7 @@ export function LandingScreen() {
               key={key}
               variant="outline"
               size="sm"
-              onClick={() => start(t.situations[key].title)}
+              onClick={() => fillFromPill(t.situations[key].title)}
               className="rounded-full font-normal"
             >
               {t.situations[key].title}
