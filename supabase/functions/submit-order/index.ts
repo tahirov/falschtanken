@@ -111,6 +111,18 @@ function buildText(o: OrderInput, q: Quote | undefined): string {
   return lines.join('\n')
 }
 
+/** Normalise a phone number into a wa.me target (digits incl. country code).
+ *  Assumes Germany for the national "0…" format. Returns null if implausible.
+ *  Note: wa.me opens WhatsApp regardless; if the number isn't on WhatsApp, the
+ *  app itself shows "not on WhatsApp" — we can't detect that server-side. */
+function waNumber(phone?: string): string | null {
+  let d = (phone ?? '').replace(/[^\d]/g, '')
+  if (!d) return null
+  if (d.startsWith('00')) d = d.slice(2)
+  else if (d.startsWith('0')) d = '49' + d.slice(1)
+  return d.length >= 10 && d.length <= 15 ? d : null
+}
+
 function buildKeyboard(id: string, o: OrderInput) {
   const rows: { text: string; callback_data?: string; url?: string }[][] = [
     [
@@ -125,9 +137,10 @@ function buildKeyboard(id: string, o: OrderInput) {
       url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.location)}`,
     })
   }
-  // No WhatsApp/call button here: Telegram inline buttons can't carry a tel:
-  // link, and on accept we send the customer as a tappable contact card (with a
-  // native Call button), so calling is handled there.
+  // WhatsApp (wa.me is a valid https button URL). Calling is still handled by
+  // the contact card sent on accept, since tel: can't be a Telegram button.
+  const wa = waNumber(o.contact_phone)
+  if (wa) links.push({ text: '💬 WhatsApp', url: `https://wa.me/${wa}` })
   if (o.vehicle_doc_url) {
     links.push({ text: '📄 Fahrzeugschein', url: o.vehicle_doc_url })
   }

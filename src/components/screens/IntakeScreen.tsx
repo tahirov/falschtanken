@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import {
-  Car, MapPin, Send, Camera, Loader2, CheckCircle2,
+  Car, MapPin, Send, Camera, Upload, Loader2, CheckCircle2, User, Phone,
 } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { translations } from '@/lib/i18n'
@@ -14,7 +14,7 @@ import { scanVehicleDoc } from '@/lib/vehicleDoc'
 import { IntakeTabs } from '@/components/IntakeTabs'
 
 // Each step writes its answer somewhere in the case. `kind` drives the UI.
-type Kind = 'chips' | 'vehicle' | 'location'
+type Kind = 'chips' | 'vehicle' | 'location' | 'contact'
 interface Step {
   key: string
   kind: Kind
@@ -58,6 +58,8 @@ export function IntakeScreen() {
       { key: 'litresAmount', kind: 'chips', question: tk.questions.litres, chips: [...tk.chips.litres] },
       { key: 'tankLevel', kind: 'chips', question: tk.tankLevelQuestion, chips: [...tk.tankLevelChips] },
       { key: 'vehicle', kind: 'vehicle', question: tk.vehicleQuestion },
+      { key: 'contact', kind: 'contact', question: tk.contactQuestion },
+      // Location is intentionally LAST: confirming it transitions to the order.
       { key: 'location', kind: 'location', question: tk.questions.location },
     ]
   }
@@ -80,7 +82,8 @@ export function IntakeScreen() {
   const [scanStep, setScanStep] = useState(0)
   // Holds the litres amount until the tank-level follow-up combines them.
   const litresAmountRef = useRef('')
-  const fileRef = useRef<HTMLInputElement>(null)
+  const cameraRef = useRef<HTMLInputElement>(null)
+  const uploadRef = useRef<HTMLInputElement>(null)
   const endRef = useRef<HTMLDivElement>(null)
 
   const step = queue[stepIndex]
@@ -138,6 +141,7 @@ export function IntakeScreen() {
       case 'location':
         store.setLocation(answer)
         break
+      // 'contact' inputs write straight to the store, nothing to record here.
     }
   }
 
@@ -166,10 +170,12 @@ export function IntakeScreen() {
   }
 
   function finish(h: ChatBubble[]) {
-    setHistory([...h, { role: 'assistant', text: '✓' }])
+    // No abrupt "✓" flash — keep the last answer on screen, then move to the
+    // order page once everything is collected.
+    setHistory(h)
     store.setAllComplete(true)
     store.setCurrentStep(0)
-    setTimeout(() => navigate('/offer'), 400)
+    setTimeout(() => navigate('/offer'), 300)
   }
 
   function onChip(chip: string) {
@@ -206,6 +212,11 @@ export function IntakeScreen() {
     }
   }
 
+  function onContactNext() {
+    if (!store.contactName.trim() || !store.contactPhone.trim()) return
+    advance(`${store.contactName.trim()} · ${store.contactPhone.trim()}`)
+  }
+
   function shareLocation() {
     if (locating) return
     if (!navigator.geolocation) {
@@ -218,10 +229,9 @@ export function IntakeScreen() {
         const { latitude, longitude } = pos.coords
         const address = await reverseGeocode(latitude, longitude)
         setLocating(false)
-        // Don't auto-submit: surface the detected address as a confirmable chip
-        // (the customer taps to confirm, or types a correction instead).
+        // Don't auto-submit: surface the detected address as a confirmable card
+        // (the customer taps Bestätigen, or types a correction instead).
         setDetectedLocation(address ?? `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`)
-        toast.success(tk.locationDetected)
       },
       () => {
         setLocating(false)
@@ -313,19 +323,21 @@ export function IntakeScreen() {
       <div className="border-t px-4 pb-4 pt-3 space-y-2">
         {step?.kind === 'chips' && (
           <>
-            <div className="space-y-2">
-              {step.chips?.map((chip) => (
-                <Button
-                  key={chip}
-                  variant="outline"
-                  className="w-full justify-start gap-3"
-                  onClick={() => onChip(chip)}
-                >
-                  <CheckCircle2 className="size-4 text-muted-foreground shrink-0" />
-                  <span className="text-sm">{chip}</span>
-                </Button>
-              ))}
-            </div>
+            {step.chips && step.chips.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {step.chips.map((chip) => (
+                  <Button
+                    key={chip}
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full font-normal"
+                    onClick={() => onChip(chip)}
+                  >
+                    {chip}
+                  </Button>
+                ))}
+              </div>
+            )}
             <div className="flex gap-2 items-center pt-1">
               <Input
                 value={textInput}
@@ -343,11 +355,23 @@ export function IntakeScreen() {
 
         {step?.kind === 'vehicle' && (
           <>
+            {/* Camera capture (mobile) and a plain file picker (gallery/desktop). */}
             <input
-              ref={fileRef}
+              ref={cameraRef}
               type="file"
               accept="image/*"
               capture="environment"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) onPhoto(f)
+                e.target.value = ''
+              }}
+            />
+            <input
+              ref={uploadRef}
+              type="file"
+              accept="image/*"
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0]
@@ -381,15 +405,16 @@ export function IntakeScreen() {
                   <CheckCircle2 className="size-4" />
                   {tk.confirm}
                 </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-center gap-2"
-                  onClick={() => fileRef.current?.click()}
-                  disabled={scanning}
-                >
-                  <Camera className="size-4" />
-                  {tk.photo.retake}
-                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="outline" className="justify-center gap-2" onClick={() => cameraRef.current?.click()} disabled={scanning}>
+                    <Camera className="size-4" />
+                    {tk.photo.take}
+                  </Button>
+                  <Button variant="outline" className="justify-center gap-2" onClick={() => uploadRef.current?.click()} disabled={scanning}>
+                    <Upload className="size-4" />
+                    {tk.photo.upload}
+                  </Button>
+                </div>
               </>
             ) : (
               <>
@@ -406,15 +431,17 @@ export function IntakeScreen() {
                     <Send className="size-4" />
                   </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  className="w-full justify-center gap-2 rounded-full"
-                  onClick={() => fileRef.current?.click()}
-                  disabled={scanning}
-                >
-                  <Camera className="size-4 text-primary" />
-                  {tk.photo.take}
-                </Button>
+                {/* Or add the Fahrzeugschein — take a photo or upload a file. */}
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="outline" className="justify-center gap-2" onClick={() => cameraRef.current?.click()} disabled={scanning}>
+                    <Camera className="size-4 text-primary" />
+                    {tk.photo.take}
+                  </Button>
+                  <Button variant="outline" className="justify-center gap-2" onClick={() => uploadRef.current?.click()} disabled={scanning}>
+                    <Upload className="size-4 text-primary" />
+                    {tk.photo.upload}
+                  </Button>
+                </div>
                 <p className="text-center text-xs text-muted-foreground">{tk.photo.hint}</p>
               </>
             )}
@@ -428,15 +455,16 @@ export function IntakeScreen() {
               {locating ? t.aiIntake.locating : tk.shareLocation}
             </Button>
             {detectedLocation && (
-              <Button
-                variant="outline"
-                className="w-full justify-start gap-2 border-primary/40 bg-primary/5"
-                onClick={() => advance(detectedLocation)}
-              >
-                <MapPin className="size-4 text-primary shrink-0" />
-                <span className="flex-1 text-left text-sm truncate">{detectedLocation}</span>
-                <CheckCircle2 className="size-4 text-primary shrink-0" />
-              </Button>
+              <>
+                <div className="flex items-start gap-2 rounded-xl border border-primary/30 bg-primary/5 p-3">
+                  <MapPin className="size-4 text-primary shrink-0 mt-0.5" />
+                  <span className="text-sm">{detectedLocation}</span>
+                </div>
+                <Button className="w-full justify-center gap-2" onClick={() => advance(detectedLocation)}>
+                  <CheckCircle2 className="size-4" />
+                  {tk.confirm}
+                </Button>
+              </>
             )}
             <div className="flex gap-2 items-center">
               <Input
@@ -451,6 +479,49 @@ export function IntakeScreen() {
               </Button>
             </div>
           </>
+        )}
+
+        {step?.kind === 'contact' && (
+          <div className="space-y-2.5">
+            <div className="space-y-1">
+              <label htmlFor="wiz-name" className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <User className="size-3.5" />
+                {t.offer.contactName}
+              </label>
+              <Input
+                id="wiz-name"
+                autoComplete="name"
+                value={store.contactName}
+                onChange={(e) => store.setContactName(e.target.value)}
+                placeholder={t.offer.contactNamePlaceholder}
+                className="h-10"
+              />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="wiz-phone" className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Phone className="size-3.5" />
+                {t.offer.contactPhone}
+              </label>
+              <Input
+                id="wiz-phone"
+                type="tel"
+                autoComplete="tel"
+                value={store.contactPhone}
+                onChange={(e) => store.setContactPhone(e.target.value)}
+                placeholder={t.offer.contactPhonePlaceholder}
+                className="h-10"
+                onKeyDown={(e) => e.key === 'Enter' && onContactNext()}
+              />
+            </div>
+            <Button
+              className="w-full justify-center gap-2"
+              onClick={onContactNext}
+              disabled={!store.contactName.trim() || !store.contactPhone.trim()}
+            >
+              <CheckCircle2 className="size-4" />
+              {tk.confirm}
+            </Button>
+          </div>
         )}
 
       </div>

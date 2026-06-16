@@ -13,6 +13,15 @@ const SECRET = Deno.env.get('TELEGRAM_WEBHOOK_SECRET')
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
+/** Phone → wa.me target (digits incl. country code); assumes Germany for "0…". */
+function waNumber(phone?: string | null): string | null {
+  let d = (phone ?? '').replace(/[^\d]/g, '')
+  if (!d) return null
+  if (d.startsWith('00')) d = d.slice(2)
+  else if (d.startsWith('0')) d = '49' + d.slice(1)
+  return d.length >= 10 && d.length <= 15 ? d : null
+}
+
 async function tg(method: string, body: unknown): Promise<void> {
   if (!BOT) return
   try {
@@ -90,6 +99,8 @@ Deno.serve(async (req) => {
               url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ord.location)}`,
             })
           }
+          const wa = waNumber(ord.contact_phone)
+          if (wa) links.push({ text: '💬 WhatsApp', url: `https://wa.me/${wa}` })
           if (ord.vehicle_doc_url) links.push({ text: '📄 Fahrzeugschein', url: ord.vehicle_doc_url })
           if (links.length) reply_markup = { inline_keyboard: [links] }
         }
