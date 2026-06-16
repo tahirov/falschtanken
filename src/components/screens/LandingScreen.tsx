@@ -161,7 +161,7 @@ export function LandingScreen() {
       <div className="flex-1 overflow-y-auto">
       {/* Hero */}
       <div className="px-6 pt-16 pb-8 text-center">
-        <h1 className="gradient-headline font-heading text-2xl sm:text-4xl font-bold leading-[1.1] sm:leading-[1.05] tracking-tight text-balance">
+        <h1 className="gradient-headline font-heading text-2xl sm:text-4xl font-bold leading-[1.2] tracking-tight text-balance pb-[0.12em]">
           {t.heroTitle}
         </h1>
         <p className="text-muted-foreground text-base mt-4 max-w-xs mx-auto text-balance">
