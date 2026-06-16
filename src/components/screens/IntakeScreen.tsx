@@ -27,6 +27,22 @@ interface ChatBubble {
   text: string
 }
 
+// Heuristic check of a typed vehicle string: a 4-digit year = Baujahr; the first
+// non-year token = Marke, a second = Modell. Returns which parts look missing.
+function missingVehicleParts(text: string): ('marke' | 'modell' | 'baujahr')[] {
+  const hasYear = /\b(19|20)\d{2}\b/.test(text)
+  const tokens = text
+    .replace(/\b(19|20)\d{2}\b/g, ' ')
+    .replace(/[,/]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+  const missing: ('marke' | 'modell' | 'baujahr')[] = []
+  if (tokens.length < 1) missing.push('marke')
+  if (tokens.length < 2) missing.push('modell')
+  if (!hasYear) missing.push('baujahr')
+  return missing
+}
+
 export function IntakeScreen() {
   const navigate = useNavigate()
   const store = useAppStore()

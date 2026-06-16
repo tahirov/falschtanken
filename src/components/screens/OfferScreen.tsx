@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -85,73 +85,68 @@ export function OfferScreen() {
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
-      <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 flex flex-col gap-4">
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
 
-      {/* Summary card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t.offer.summaryTitle}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {summaryRows.map((row) => {
-            const Icon = row.icon
-            return (
-              <div key={row.label} className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Icon className="size-4 text-muted-foreground shrink-0" />
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">{row.label}</span>
+      {/* Summary — risk badge pinned to the card's top-right corner */}
+      <Card size="sm">
+        <CardContent className="space-y-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-heading text-base font-medium min-w-0 truncate">{t.offer.summaryTitle}</p>
+            <span className={`shrink-0 inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${severityBadgeClass}`}>
+              {t.offer.severity[severity]}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {summaryRows.map((row) => {
+              const Icon = row.icon
+              return (
+                <div key={row.label} className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0 shrink-0">
+                    <Icon className="size-4 text-muted-foreground shrink-0" />
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">{row.label}</span>
+                  </div>
+                  <div className="flex items-center gap-0.5 min-w-0">
+                    <span className="text-sm font-medium truncate text-right">{row.value || '—'}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => editStep(row.step)}
+                      aria-label="Bearbeiten"
+                      className="shrink-0"
+                    >
+                      <Pencil className="size-3" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 min-w-0">
-                  <span className="text-sm font-medium truncate text-right">{row.value || '—'}</span>
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={() => editStep(row.step)}
-                    aria-label="Bearbeiten"
-                    className="shrink-0"
-                  >
-                    <Pencil className="size-3" />
-                  </Button>
-                </div>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </CardContent>
       </Card>
 
-      {/* Severity badge */}
-      <div className="flex justify-center">
-        <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${severityBadgeClass}`}>
-          {t.offer.severity[severity]}
-        </span>
-      </div>
-
-      {/* Price + ETA card */}
-      <Card>
-        <CardContent className="pt-4 pb-4">
+      {/* Price + ETA */}
+      <Card size="sm">
+        <CardContent>
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-heading text-3xl font-bold">€{price}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{t.offer.priceTitle}</p>
+              <p className="font-heading text-3xl font-bold leading-none">€{price}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t.offer.priceTitle}</p>
             </div>
             <div className="text-right">
               <div className="flex items-center gap-1.5 justify-end">
                 <Clock className="size-4 text-primary" />
                 <p className="font-heading text-xl font-bold">{eta} min</p>
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5">{t.offer.eta(eta)}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t.offer.eta(eta)}</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Contact details — placed above payment so both fields sit close to the
-          action and are reached first when scrolling. */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm text-muted-foreground">{t.offer.contactTitle}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 pt-0">
+      {/* Contact details — above payment so both fields sit just over the action */}
+      <Card size="sm">
+        <CardContent className="space-y-2.5">
+          <p className="text-sm font-medium text-muted-foreground">{t.offer.contactTitle}</p>
           <div className="space-y-1.5">
             <Label htmlFor="contact-name" className="flex items-center gap-1.5 text-xs">
               <User className="size-3.5 text-muted-foreground" />
@@ -182,29 +177,29 @@ export function OfferScreen() {
         </CardContent>
       </Card>
 
-      {/* Payment methods (informational — kept below the contact fields) */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm text-muted-foreground">{t.offer.paymentTitle}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 pt-0">
-          {t.offer.paymentMethods.map((method, i) => {
-            const Icon = paymentIcons[i]
-            return (
-              <div key={method} className="flex items-center gap-3">
-                <Icon className="size-4 text-muted-foreground shrink-0" />
-                <span className="text-sm">{method}</span>
-              </div>
-            )
-          })}
+      {/* Payment methods (informational) */}
+      <Card size="sm">
+        <CardContent className="space-y-2">
+          <p className="text-sm font-medium text-muted-foreground">{t.offer.paymentTitle}</p>
+          <div className="space-y-1.5">
+            {t.offer.paymentMethods.map((method, i) => {
+              const Icon = paymentIcons[i]
+              return (
+                <div key={method} className="flex items-center gap-2.5">
+                  <Icon className="size-4 text-muted-foreground shrink-0" />
+                  <span className="text-sm">{method}</span>
+                </div>
+              )
+            })}
+          </div>
         </CardContent>
       </Card>
 
       </div>
 
-      {/* Fixed footer: the action stays visible while the cards scroll above it,
-          so both contact fields are always reachable just above the button. */}
-      <div className="border-t bg-background px-4 py-3 space-y-2">
+      {/* Compact fixed footer: primary action + a slim note. Back lives in the
+          header (chevron), so no redundant button here. */}
+      <div className="border-t bg-background px-4 py-2.5 space-y-1.5">
         <Button
           className="w-full"
           size="lg"
@@ -213,14 +208,7 @@ export function OfferScreen() {
         >
           {t.offer.cta}
         </Button>
-        <Button
-          variant="ghost"
-          className="w-full"
-          onClick={() => navigate(-1)}
-        >
-          {t.offer.back}
-        </Button>
-        <p className="text-center text-xs text-muted-foreground">{t.offer.disclaimer}</p>
+        <p className="text-center text-[11px] leading-tight text-muted-foreground">{t.offer.disclaimer}</p>
       </div>
     </div>
   )

@@ -57,6 +57,8 @@ export const translations = {
       vehiclePlaceholder: 'z. B. BMW 320d, 2017',
       fuelQuestion: 'Diesel oder Benziner?',
       fuelChips: ['Diesel', 'Benziner', 'Weiß nicht'],
+      vehicleParts: { marke: 'Marke', modell: 'Modell', baujahr: 'Baujahr' },
+      vehicleMissing: (parts: string) => `Können Sie das noch ergänzen? Es fehlt noch: ${parts}.`,
       plzPlaceholder: 'PLZ oder vollständige Adresse',
       shareLocation: 'Standort teilen',
       photo: {
@@ -282,6 +284,8 @@ export const translations = {
       vehiclePlaceholder: 'e.g. BMW 320d, 2017',
       fuelQuestion: 'Diesel or petrol?',
       fuelChips: ['Diesel', 'Petrol', "Don't know"],
+      vehicleParts: { marke: 'make', modell: 'model', baujahr: 'year' },
+      vehicleMissing: (parts: string) => `Could you add the missing details? Still missing: ${parts}.`,
       plzPlaceholder: 'Postcode or full address',
       shareLocation: 'Share location',
       photo: {
@@ -507,6 +511,8 @@ export const translations = {
       vehiclePlaceholder: 'np. BMW 320d, 2017',
       fuelQuestion: 'Diesel czy benzyna?',
       fuelChips: ['Diesel', 'Benzyna', 'Nie wiem'],
+      vehicleParts: { marke: 'marka', modell: 'model', baujahr: 'rok' },
+      vehicleMissing: (parts: string) => `Czy możesz to uzupełnić? Brakuje jeszcze: ${parts}.`,
       plzPlaceholder: 'Kod pocztowy lub pełny adres',
       shareLocation: 'Udostępnij lokalizację',
       photo: {
