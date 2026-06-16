@@ -162,7 +162,7 @@ export function LandingScreen() {
     <div className="flex flex-col flex-1 min-h-0">
       <div className="flex-1 overflow-y-auto">
       {/* Hero */}
-      <div className="px-6 pt-16 pb-8 text-center">
+      <div className="px-6 pt-6 pb-6 sm:pt-16 sm:pb-8 text-center">
         <h1 className="gradient-headline font-heading text-2xl sm:text-4xl font-bold leading-[1.2] tracking-tight text-balance pb-[0.12em]">
           {t.heroTitles[titleIdx] ?? t.heroTitles[0]}
         </h1>
