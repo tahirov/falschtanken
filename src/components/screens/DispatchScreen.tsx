@@ -17,6 +17,7 @@ import { useAppStore } from '@/store/useAppStore'
 import { translations } from '@/lib/i18n'
 import { technician, mockReplies } from '@/lib/mockData'
 import { getOrderStatus } from '@/lib/orders'
+import { loadDispatch, clearDispatch } from '@/lib/dispatchSession'
 
 interface Message {
   id: number
@@ -31,8 +32,13 @@ export function DispatchScreen() {
   const lang = useAppStore((s) => s.lang)
   const t = translations[lang]
   const store = useAppStore()
-  const eta = store.eta || 35
-  const price = store.price || 150
+
+  // Restore the dispatch on refresh: in-memory store wins, else the persisted
+  // session so we resume real order tracking instead of the demo sequence.
+  const persisted = useRef(loadDispatch()).current
+  const orderId = store.orderId ?? persisted?.orderId ?? null
+  const eta = store.eta || persisted?.eta || 35
+  const price = store.price || persisted?.price || 150
 
   const [phase, setPhase] = useState<Phase>('pending')
   const [remainingSec, setRemainingSec] = useState(0)
@@ -41,8 +47,6 @@ export function DispatchScreen() {
   const [cancelOpen, setCancelOpen] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
   const msgIdRef = useRef(0)
-
-  const orderId = store.orderId
 
   function playAcceptedChime() {
     try {
@@ -131,6 +135,7 @@ export function DispatchScreen() {
   }
 
   function handleCancel() {
+    clearDispatch()
     store.resetCase()
     setCancelOpen(false)
     navigate('/')
@@ -147,7 +152,7 @@ export function DispatchScreen() {
           <p className="font-heading font-semibold text-base">{t.dispatch.declinedTitle}</p>
           <p className="text-sm text-muted-foreground max-w-xs">{t.dispatch.declinedText}</p>
         </div>
-        <Button onClick={() => { store.resetCase(); navigate('/') }}>
+        <Button onClick={() => { clearDispatch(); store.resetCase(); navigate('/') }}>
           {t.dispatch.declinedCta}
         </Button>
       </div>

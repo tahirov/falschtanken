@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { useAppStore } from '@/store/useAppStore'
 import { translations, type Lang } from '@/lib/i18n'
 import { loadChat, saveChat, clearChat } from '@/lib/chatSession'
+import { saveDispatch } from '@/lib/dispatchSession'
 import {
   runIntakeAgent,
   runIntakeAgentVoice,
@@ -213,6 +214,7 @@ export function AiIntakeScreen() {
       quote,
     )
     store.setOrderId(id)
+    if (id) saveDispatch({ orderId: id, price: quote.total, eta: quote.eta })
     clearChat() // case submitted — don't restore/re-submit it later
     navigate('/dispatch')
   }

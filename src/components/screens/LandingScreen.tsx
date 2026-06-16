@@ -8,6 +8,7 @@ import { useAppStore } from '@/store/useAppStore'
 import { translations } from '@/lib/i18n'
 import { WavRecorder } from '@/lib/audioRecorder'
 import { clearChat } from '@/lib/chatSession'
+import { clearDispatch } from '@/lib/dispatchSession'
 
 const MAX_REC_SECONDS = 60
 const BAR_COUNT = 56
@@ -94,6 +95,7 @@ export function LandingScreen() {
   // pre-seed it with whatever the customer typed or the situation they picked.
   function start(seed: string) {
     clearChat() // begin a fresh conversation
+    clearDispatch()
     setOrderId(null)
     setSituation(seed)
     navigate('/chat')
@@ -126,6 +128,7 @@ export function LandingScreen() {
     setRecording(false)
     const wav = await rec.stop()
     clearChat() // begin a fresh conversation
+    clearDispatch()
     setOrderId(null)
     setSituation('')
     setSeedAudio(wav)
