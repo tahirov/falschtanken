@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Fuel, Globe, Mic, ArrowUp, X, Check } from 'lucide-react'
+import { Mic, ArrowUp, X, Check } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
-import { translations, type Lang } from '@/lib/i18n'
+import { translations } from '@/lib/i18n'
 import { WavRecorder } from '@/lib/audioRecorder'
 
 const MAX_REC_SECONDS = 60
@@ -18,12 +18,9 @@ const situationKeys = [
   'andererKraftstoff',
 ] as const
 
-const LANGS: Lang[] = ['de', 'en', 'pl']
-
 export function LandingScreen() {
   const navigate = useNavigate()
   const lang = useAppStore((s) => s.lang)
-  const setLang = useAppStore((s) => s.setLang)
   const setSituation = useAppStore((s) => s.setSituation)
   const setOrderId = useAppStore((s) => s.setOrderId)
   const setSeedAudio = useAppStore((s) => s.setSeedAudio)
@@ -161,29 +158,12 @@ export function LandingScreen() {
 
   return (
     <div className="flex flex-col flex-1 overflow-y-auto">
-      {/* Language switcher */}
-      <div className="flex justify-end px-4 pt-3 gap-1">
-        {LANGS.map((l) => (
-          <Button
-            key={l}
-            variant={lang === l ? 'secondary' : 'ghost'}
-            size="xs"
-            onClick={() => setLang(l)}
-            className="uppercase font-bold text-xs"
-          >
-            {l}
-          </Button>
-        ))}
-        <Globe className="size-4 text-muted-foreground self-center ml-1" />
-      </div>
-
       {/* Hero */}
-      <div className="flex flex-col items-center text-center px-6 pt-10 pb-7 gap-3">
-        <div className="size-14 rounded-full bg-primary flex items-center justify-center mb-1">
-          <Fuel className="size-7 text-primary-foreground" />
-        </div>
-        <h1 className="font-heading text-2xl font-bold leading-tight">{t.appName}</h1>
-        <p className="text-muted-foreground text-sm">{t.tagline}</p>
+      <div className="px-6 pt-14 pb-8 text-center">
+        <h1 className="font-heading text-3xl sm:text-4xl font-bold leading-[1.1] tracking-tight text-balance">
+          {t.heroTitle}
+        </h1>
+        <p className="text-muted-foreground text-base mt-4 max-w-sm mx-auto">{t.heroSubtitle}</p>
       </div>
 
       {/* Prompt box */}

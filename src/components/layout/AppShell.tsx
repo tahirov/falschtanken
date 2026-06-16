@@ -1,9 +1,11 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Globe } from 'lucide-react'
 import { AdminMenu } from '@/components/layout/AdminMenu'
 import { useAppStore } from '@/store/useAppStore'
-import { translations } from '@/lib/i18n'
+import { translations, type Lang } from '@/lib/i18n'
+
+const LANGS: Lang[] = ['de', 'en', 'pl']
 
 interface AppShellProps {
   children: React.ReactNode
@@ -22,7 +24,9 @@ export function AppShell({ children }: AppShellProps) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const lang = useAppStore((s) => s.lang)
+  const setLang = useAppStore((s) => s.setLang)
   const t = translations[lang]
+  const isLanding = pathname === '/'
 
   const titleKey = routeTitles[pathname] ?? 'landing'
   const screenTitle = t.nav.screenTitles[titleKey]
@@ -52,7 +56,22 @@ export function AppShell({ children }: AppShellProps) {
             )}
             <span className="font-heading font-bold text-base pl-1">{t.appName}</span>
           </div>
-          {screenTitle ? (
+          {isLanding ? (
+            <div className="flex items-center gap-0.5">
+              {LANGS.map((l) => (
+                <Button
+                  key={l}
+                  variant={lang === l ? 'secondary' : 'ghost'}
+                  size="xs"
+                  onClick={() => setLang(l)}
+                  className="uppercase font-bold text-xs px-2"
+                >
+                  {l}
+                </Button>
+              ))}
+              <Globe className="size-4 text-muted-foreground ml-0.5" />
+            </div>
+          ) : screenTitle ? (
             <span className="text-sm text-muted-foreground font-medium">{screenTitle}</span>
           ) : null}
         </header>

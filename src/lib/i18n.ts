@@ -4,6 +4,8 @@ export const translations = {
   de: {
     appName: 'Tankhilfe24',
     tagline: 'Soforthilfe bei Falschbetankung',
+    heroTitle: 'Falsch getankt? Wir bringen Sie zurück auf die Straße.',
+    heroSubtitle: 'Schildern Sie kurz, was passiert ist — per Text oder Sprachnachricht.',
     speakButton: 'Sprechen Sie jetzt',
     orChoose: 'Oder wählen Sie Ihre Situation',
     promptPlaceholders: [
@@ -181,6 +183,8 @@ export const translations = {
   en: {
     appName: 'Tankhilfe24',
     tagline: 'Emergency help for misfuelling',
+    heroTitle: "Wrong fuel? We'll get you back on the road.",
+    heroSubtitle: 'Tell us briefly what happened — by text or voice message.',
     speakButton: 'Speak now',
     orChoose: 'Or choose your situation',
     promptPlaceholders: [
@@ -358,6 +362,8 @@ export const translations = {
   pl: {
     appName: 'Tankhilfe24',
     tagline: 'Natychmiastowa pomoc przy błędnym tankowaniu',
+    heroTitle: 'Złe paliwo? Pomożemy Ci wrócić na drogę.',
+    heroSubtitle: 'Opisz krótko, co się stało — tekstem lub wiadomością głosową.',
     speakButton: 'Mów teraz',
     orChoose: 'Lub wybierz swoją sytuację',
     promptPlaceholders: [
