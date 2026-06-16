@@ -62,8 +62,9 @@ Deno.serve(async (req) => {
     const [action, id] = String(cq.data).split(':')
     if ((action === 'accept' || action === 'decline') && id) {
       const status = action === 'accept' ? 'dispatched' : 'cancelled'
+      const chatId = String(cq.message?.chat?.id ?? '')
       const patch: Record<string, unknown> = { status }
-      if (action === 'accept') patch.accepted_chat_id = String(cq.message?.chat?.id ?? '')
+      if (action === 'accept') patch.accepted_chat_id = chatId
       await supabase.from('orders').update(patch).eq('id', id)
       const stamp = action === 'accept' ? '✅ ANGENOMMEN' : '❌ ABGELEHNT'
       const by = cq.from?.first_name ? ` · ${cq.from.first_name}` : ''
@@ -75,6 +76,22 @@ Deno.serve(async (req) => {
           message_id: cq.message.message_id,
           text: `${cq.message.text ?? ''}\n\n${stamp}${by}`,
         })
+      }
+      // On accept, send the customer as a tappable contact card so the
+      // technician can call with one tap — works even after the buttons go.
+      if (action === 'accept' && chatId) {
+        const { data: ord } = await supabase
+          .from('orders')
+          .select('contact_name, contact_phone')
+          .eq('id', id)
+          .maybeSingle()
+        if (ord?.contact_phone) {
+          await tg('sendContact', {
+            chat_id: chatId,
+            phone_number: ord.contact_phone,
+            first_name: ord.contact_name || 'Kunde',
+          })
+        }
       }
     } else {
       await tg('answerCallbackQuery', { callback_query_id: cq.id })
