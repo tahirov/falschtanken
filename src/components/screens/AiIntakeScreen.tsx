@@ -177,6 +177,14 @@ export function AiIntakeScreen() {
   // The static greeting leads the thread; the live conversation follows.
   const bubbles: AgentMessage[] = [{ role: 'assistant', content: t.aiIntake.greeting }, ...messages]
 
+  // Chips: the agent's per-question answers, or — at the very start, before
+  // anything has been said — the four situation starters to get going.
+  const starters =
+    messages.length === 0 && !store.situation.trim() && !store.seedAudio
+      ? Object.values(t.situations).map((s) => s.title)
+      : []
+  const chipOptions = suggestions.length > 0 ? suggestions : starters
+
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
@@ -236,9 +244,9 @@ export function AiIntakeScreen() {
         </div>
       ) : (
         <div className="border-t">
-          {suggestions.length > 0 && !busy && !recording && (
+          {chipOptions.length > 0 && !busy && !recording && (
             <div className="flex flex-wrap gap-2 px-4 pt-3">
-              {suggestions.map((s) => (
+              {chipOptions.map((s) => (
                 <Button
                   key={s}
                   variant="outline"
