@@ -1,9 +1,10 @@
 export const technician = {
-  name: 'Thomas B.',
-  initials: 'TB',
+  name: 'Ihsan Gerçek',
+  initials: 'IG',
   role: 'Kfz-Techniker',
   rating: '4.9',
-  jobCount: '312 Einsätze',
+  jobCount: '300+ Einsätze',
+  photo: '/ihsan-gercek.jpeg',
 }
 
 export const mockAnswers: Record<string, string> = {

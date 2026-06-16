@@ -203,9 +203,11 @@ export function DispatchScreen() {
       <div className="px-4 pb-3">
         <Card>
           <CardContent className="flex items-center gap-3 py-3">
-            <div className="size-12 rounded-full bg-primary flex items-center justify-center shrink-0">
-              <span className="text-primary-foreground font-bold text-sm">{technician.initials}</span>
-            </div>
+            <img
+              src={technician.photo}
+              alt={technician.name}
+              className="size-12 rounded-full object-cover shrink-0"
+            />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-semibold text-sm">{technician.name}</span>
@@ -235,9 +237,11 @@ export function DispatchScreen() {
             className={`flex ${msg.from === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             {msg.from === 'tech' && (
-              <div className="size-7 rounded-full bg-primary flex items-center justify-center shrink-0 mr-2 mt-0.5">
-                <span className="text-primary-foreground text-[10px] font-bold">{technician.initials}</span>
-              </div>
+              <img
+                src={technician.photo}
+                alt={technician.name}
+                className="size-7 rounded-full object-cover shrink-0 mr-2 mt-0.5"
+              />
             )}
             <div
               className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
