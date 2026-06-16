@@ -5,6 +5,7 @@ export const technician = {
   rating: '4.9',
   jobCount: '300+ Einsätze',
   photo: '/ihsan-gercek.jpeg',
+  phone: '+49 174 2432222',
 }
 
 export const mockAnswers: Record<string, string> = {

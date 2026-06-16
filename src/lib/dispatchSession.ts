@@ -8,6 +8,8 @@ export interface DispatchSnapshot {
   orderId: string
   price: number
   eta: number
+  /** Absolute arrival deadline (ms epoch) so the countdown survives refresh. */
+  arrivalAt?: number
 }
 
 export function loadDispatch(): DispatchSnapshot | null {

@@ -12,12 +12,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { CheckCircle2, XCircle, Phone, Send, Star, Loader2 } from 'lucide-react'
-import { toast } from 'sonner'
 import { useAppStore } from '@/store/useAppStore'
 import { translations } from '@/lib/i18n'
 import { technician, mockReplies } from '@/lib/mockData'
 import { getOrderStatus } from '@/lib/orders'
-import { loadDispatch, clearDispatch } from '@/lib/dispatchSession'
+import { loadDispatch, saveDispatch, clearDispatch } from '@/lib/dispatchSession'
 
 interface Message {
   id: number
@@ -41,7 +40,8 @@ export function DispatchScreen() {
   const price = store.price || persisted?.price || 150
 
   const [phase, setPhase] = useState<Phase>('pending')
-  const [remainingSec, setRemainingSec] = useState(0)
+  const [arrivalAt, setArrivalAt] = useState<number | null>(persisted?.arrivalAt ?? null)
+  const [nowTs, setNowTs] = useState(() => Date.now())
   const [inputText, setInputText] = useState('')
   const [messages, setMessages] = useState<Message[]>([])
   const [cancelOpen, setCancelOpen] = useState(false)
@@ -74,7 +74,12 @@ export function DispatchScreen() {
 
   function connect() {
     setPhase('connected')
-    setRemainingSec(Math.max(1, eta) * 60)
+    // Fix the arrival deadline once (persisted) so the countdown keeps ticking
+    // down across refreshes instead of restarting.
+    const at = persisted?.arrivalAt ?? arrivalAt ?? Date.now() + Math.max(1, eta) * 60000
+    setArrivalAt(at)
+    setNowTs(Date.now())
+    if (orderId) saveDispatch({ orderId, price, eta, arrivalAt: at })
     playAcceptedChime()
     msgIdRef.current += 1
     setMessages([{
@@ -112,13 +117,17 @@ export function DispatchScreen() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // Tick the arrival countdown down once the technician is connected.
+  // Re-read the clock each second; remaining time is derived from the fixed
+  // arrival deadline, so it keeps counting down correctly after a refresh.
   useEffect(() => {
     if (phase !== 'connected') return
-    const iv = setInterval(() => setRemainingSec((s) => (s > 0 ? s - 1 : 0)), 1000)
+    const iv = setInterval(() => setNowTs(Date.now()), 1000)
     return () => clearInterval(iv)
   }, [phase])
 
+  const remainingSec = arrivalAt
+    ? Math.max(0, Math.round((arrivalAt - nowTs) / 1000))
+    : Math.max(1, eta) * 60
   const countdown = `${Math.floor(remainingSec / 60)}:${String(remainingSec % 60).padStart(2, '0')}`
 
   function sendMessage() {
@@ -211,10 +220,6 @@ export function DispatchScreen() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-semibold text-sm">{technician.name}</span>
-                <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 border border-green-200 rounded-full px-2 py-0.5 font-medium">
-                  <span className="size-1.5 rounded-full bg-green-500 shrink-0" />
-                  {t.dispatch.whatsapp}
-                </span>
               </div>
               <p className="text-xs text-muted-foreground">{t.dispatch.technicianRole}</p>
               <div className="flex items-center gap-3 mt-1">
@@ -266,7 +271,9 @@ export function DispatchScreen() {
           variant="ghost"
           size="sm"
           className="flex-1 gap-1.5"
-          onClick={() => toast.info(t.dispatch.callToast)}
+          onClick={() => {
+            window.location.href = `tel:${technician.phone.replace(/[^\d+]/g, '')}`
+          }}
         >
           <Phone className="size-4" />
           {t.dispatch.callButton}
