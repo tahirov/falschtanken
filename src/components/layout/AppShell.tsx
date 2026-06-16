@@ -35,8 +35,8 @@ export function AppShell({ children }: AppShellProps) {
   return (
     // Desktop: content sits in a phone-sized card on a very light grey page.
     // Mobile: the card fills the screen (it is the only content area anyway).
-    <div className="min-h-dvh bg-muted flex justify-center sm:items-center sm:py-6">
-      <div className="w-full max-w-[480px] bg-background flex flex-col relative min-h-dvh sm:min-h-0 sm:h-[860px] sm:max-h-[calc(100dvh-3rem)] sm:rounded-2xl sm:border sm:shadow-xl sm:overflow-hidden">
+    <div className="h-dvh sm:min-h-dvh bg-muted flex justify-center sm:items-center sm:py-6 overflow-hidden sm:overflow-auto">
+      <div className="w-full max-w-[480px] bg-background flex flex-col relative h-dvh sm:h-[860px] sm:max-h-[calc(100dvh-3rem)] overflow-hidden sm:rounded-2xl sm:border sm:shadow-xl">
         {/* Header */}
         <header
           className="flex items-center justify-between px-3 h-14 border-b bg-background/95 sticky top-0 z-10 backdrop-blur-sm"
