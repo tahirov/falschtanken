@@ -6,6 +6,13 @@ export const translations = {
     tagline: 'Soforthilfe bei Falschbetankung',
     speakButton: 'Sprechen Sie jetzt',
     orChoose: 'Oder wählen Sie Ihre Situation',
+    promptPlaceholders: [
+      'Ich habe Benzin in meinen Diesel getankt…',
+      'Diesel statt Benzin – ich stehe an der A9…',
+      'Aus Versehen AdBlue falsch aufgefüllt…',
+      'Falscher Sprit, Motor noch nicht gestartet…',
+    ],
+    tryThese: 'Nicht sicher? Wählen Sie Ihre Situation:',
     availability: 'Verfügbar in Deutschland, Österreich und der Schweiz — 24/7',
     situations: {
       benzinInDiesel: { title: 'Benzin in Diesel', subtitle: 'Häufigster Fall' },
@@ -176,6 +183,13 @@ export const translations = {
     tagline: 'Emergency help for misfuelling',
     speakButton: 'Speak now',
     orChoose: 'Or choose your situation',
+    promptPlaceholders: [
+      'I put petrol in my diesel…',
+      "Diesel instead of petrol – I'm on the motorway…",
+      'Accidentally filled up the wrong AdBlue…',
+      "Wrong fuel, haven't started the engine yet…",
+    ],
+    tryThese: 'Not sure where to start? Pick your situation:',
     availability: 'Available in Germany, Austria and Switzerland — 24/7',
     situations: {
       benzinInDiesel: { title: 'Petrol in Diesel', subtitle: 'Most common case' },
@@ -346,6 +360,13 @@ export const translations = {
     tagline: 'Natychmiastowa pomoc przy błędnym tankowaniu',
     speakButton: 'Mów teraz',
     orChoose: 'Lub wybierz swoją sytuację',
+    promptPlaceholders: [
+      'Zatankowałem benzynę do diesla…',
+      'Diesel zamiast benzyny – stoję na autostradzie…',
+      'Przypadkiem wlałem zły AdBlue…',
+      'Złe paliwo, silnik jeszcze nie uruchomiony…',
+    ],
+    tryThese: 'Nie wiesz, jak zacząć? Wybierz sytuację:',
     availability: 'Dostępne w Niemczech, Austrii i Szwajcarii — 24/7',
     situations: {
       benzinInDiesel: { title: 'Benzyna do diesla', subtitle: 'Najczęstszy przypadek' },

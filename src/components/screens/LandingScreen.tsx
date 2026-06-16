@@ -1,7 +1,8 @@
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Mic, Fuel, AlertTriangle, Droplets, HelpCircle, Globe } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
+import { Fuel, Globe, Mic, ArrowUp } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { translations, type Lang } from '@/lib/i18n'
 
@@ -11,13 +12,6 @@ const situationKeys = [
   'adblueFalsch',
   'andererKraftstoff',
 ] as const
-
-const situationIcons = {
-  benzinInDiesel: Fuel,
-  dieselInBenzin: AlertTriangle,
-  adblueFalsch: Droplets,
-  andererKraftstoff: HelpCircle,
-}
 
 const LANGS: Lang[] = ['de', 'en', 'pl']
 
@@ -29,11 +23,25 @@ export function LandingScreen() {
   const setOrderId = useAppStore((s) => s.setOrderId)
   const t = translations[lang]
 
-  // Both entry points lead into the same conversational AI intake. Picking a
-  // card just pre-seeds the fuel situation so the assistant doesn't re-ask it.
-  function startChat(situation: string) {
+  const [text, setText] = useState('')
+  const [phIndex, setPhIndex] = useState(0)
+  const placeholders = t.promptPlaceholders
+
+  // Cycle the example placeholder while the box is empty.
+  const emptyRef = useRef(true)
+  emptyRef.current = text.trim() === ''
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (emptyRef.current) setPhIndex((i) => (i + 1) % placeholders.length)
+    }, 3200)
+    return () => clearInterval(id)
+  }, [placeholders.length])
+
+  // Every entry point leads into the same conversational AI intake; we just
+  // pre-seed it with whatever the customer typed or the situation they picked.
+  function start(seed: string) {
     setOrderId(null)
-    setSituation(situation)
+    setSituation(seed)
     navigate('/chat')
   }
 
@@ -56,7 +64,7 @@ export function LandingScreen() {
       </div>
 
       {/* Hero */}
-      <div className="flex flex-col items-center text-center px-6 pt-8 pb-6 gap-3">
+      <div className="flex flex-col items-center text-center px-6 pt-10 pb-7 gap-3">
         <div className="size-14 rounded-full bg-primary flex items-center justify-center mb-1">
           <Fuel className="size-7 text-primary-foreground" />
         </div>
@@ -64,51 +72,60 @@ export function LandingScreen() {
         <p className="text-muted-foreground text-sm">{t.tagline}</p>
       </div>
 
-      {/* Voice button */}
-      <div className="flex flex-col items-center gap-4 px-6 pb-6">
-        <div className="relative flex items-center justify-center">
-          {/* Pulsing ring */}
-          <span className="absolute inline-flex size-20 rounded-full bg-primary opacity-20 animate-ping" />
-          <Button
-            size="lg"
-            onClick={() => startChat('')}
-            className="relative size-20 rounded-full shadow-lg"
-            aria-label={t.speakButton}
-          >
-            <Mic className="size-8" />
-          </Button>
-        </div>
-        <p className="text-sm text-muted-foreground font-medium">{t.speakButton}</p>
-      </div>
-
-      {/* Divider */}
-      <div className="flex items-center gap-3 px-6 pb-4">
-        <div className="flex-1 h-px bg-border" />
-        <span className="text-xs text-muted-foreground">{t.orChoose}</span>
-        <div className="flex-1 h-px bg-border" />
-      </div>
-
-      {/* Situation cards */}
-      <div className="grid grid-cols-2 gap-3 px-6 pb-6">
-        {situationKeys.map((key) => {
-          const Icon = situationIcons[key]
-          const situation = t.situations[key]
-          return (
-            <Card
-              key={key}
-              className="cursor-pointer hover:ring-2 hover:ring-primary/40 transition-all active:scale-[0.98]"
-              onClick={() => startChat(situation.title)}
+      {/* Prompt box */}
+      <div className="px-5">
+        <div className="rounded-2xl border bg-card shadow-sm p-3 focus-within:ring-2 focus-within:ring-primary/40 transition">
+          <Textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder={placeholders[phIndex]}
+            rows={3}
+            className="border-0 shadow-none focus-visible:ring-0 resize-none p-0 text-base min-h-[64px]"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                start(text.trim())
+              }
+            }}
+          />
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => start('')}
+              aria-label={t.speakButton}
+              className="rounded-full text-muted-foreground"
             >
-              <CardContent className="flex flex-col gap-2 pt-4 pb-4">
-                <Icon className="size-6 text-primary" />
-                <div>
-                  <p className="font-heading font-semibold text-sm leading-tight">{situation.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{situation.subtitle}</p>
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })}
+              <Mic className="size-5" />
+            </Button>
+            <Button
+              size="icon"
+              onClick={() => start(text.trim())}
+              aria-label="Start"
+              className="rounded-full"
+            >
+              <ArrowUp className="size-5" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Suggestion pills */}
+      <div className="px-6 pt-6">
+        <p className="text-center text-xs text-muted-foreground mb-3">{t.tryThese}</p>
+        <div className="flex flex-wrap justify-center gap-2">
+          {situationKeys.map((key) => (
+            <Button
+              key={key}
+              variant="outline"
+              size="sm"
+              onClick={() => start(t.situations[key].title)}
+              className="rounded-full font-normal"
+            >
+              {t.situations[key].title}
+            </Button>
+          ))}
+        </div>
       </div>
 
       {/* Availability banner */}
