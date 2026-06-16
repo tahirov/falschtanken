@@ -11,7 +11,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { CheckCircle2, XCircle, Phone, Send, Star, Loader2, CheckCheck } from 'lucide-react'
+import {
+  CheckCircle2, XCircle, Phone, Send, Star, Loader2, CheckCheck,
+  ChevronRight, X, Fuel, Zap, MapPin, Car, User, ExternalLink,
+} from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { translations } from '@/lib/i18n'
 import { technician } from '@/lib/mockData'
@@ -39,14 +42,22 @@ export function DispatchScreen() {
   const eta = store.eta || persisted?.eta || 35
   const price = store.price || persisted?.price || 150
 
-  const [phase, setPhase] = useState<Phase>('pending')
+  // If we'd already connected before a refresh, show the connected screen
+  // straight away (no "notifying" flash); the poll below still re-verifies.
+  const [phase, setPhase] = useState<Phase>(persisted?.arrivalAt ? 'connected' : 'pending')
   const [arrivalAt, setArrivalAt] = useState<number | null>(persisted?.arrivalAt ?? null)
   const [nowTs, setNowTs] = useState(() => Date.now())
   const [inputText, setInputText] = useState('')
-  const [messages, setMessages] = useState<Message[]>([])
+  // Restore the technician conversation after a refresh.
+  const [messages, setMessages] = useState<Message[]>(() => persisted?.messages ?? [])
   const [cancelOpen, setCancelOpen] = useState(false)
+  const [showDetails, setShowDetails] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
-  const msgIdRef = useRef(0)
+  const msgIdRef = useRef(
+    persisted?.messages?.length ? Math.max(...persisted.messages.map((m) => m.id)) : 0,
+  )
+  // A resume = we'd already connected before the refresh (deadline persisted).
+  const resumed = useRef(!!persisted?.arrivalAt).current
 
   function playAcceptedChime() {
     try {
@@ -79,15 +90,29 @@ export function DispatchScreen() {
     const at = persisted?.arrivalAt ?? arrivalAt ?? Date.now() + Math.max(1, eta) * 60000
     setArrivalAt(at)
     setNowTs(Date.now())
-    if (orderId) saveDispatch({ orderId, price, eta, arrivalAt: at })
-    playAcceptedChime()
-    msgIdRef.current += 1
-    setMessages([{
-      id: msgIdRef.current,
-      from: 'tech',
-      text: t.dispatch.acceptedMessage(technician.name, eta),
-    }])
+    // On a fresh accept: chime + seed the accepted message. On a refresh-resume,
+    // keep the restored conversation and stay quiet.
+    if (!resumed) {
+      playAcceptedChime()
+      if (messages.length === 0) {
+        msgIdRef.current += 1
+        setMessages([{
+          id: msgIdRef.current,
+          from: 'tech',
+          text: t.dispatch.acceptedMessage(technician.name, eta),
+        }])
+      }
+    }
   }
+
+  // Keep the persisted dispatch snapshot in sync (incl. the conversation) so a
+  // refresh restores the technician screen and messages exactly. Guard on the
+  // LIVE store.orderId (not the persisted fallback) so cancelling, which clears
+  // it, doesn't immediately re-save and resurrect the dispatch.
+  useEffect(() => {
+    if (!store.orderId) return
+    saveDispatch({ orderId: store.orderId, price, eta, arrivalAt: arrivalAt ?? undefined, messages })
+  }, [store.orderId, price, eta, arrivalAt, messages])
 
   // Phase transitions. We ONLY move to "connected" when the operator actually
   // accepts the job in Telegram (polled below) — never on a timer. Faking an
@@ -207,12 +232,16 @@ export function DispatchScreen() {
   }
 
   return (
-    <div className="flex flex-col flex-1 overflow-hidden">
-      {/* Confirmed banner */}
+    <div className="relative flex flex-col flex-1 overflow-hidden">
+      {/* Confirmed banner = the order summary; tap it to view full details */}
       <div className="px-4 pt-4 pb-3">
-        <div className="flex items-start gap-3 rounded-xl bg-green-50 border border-green-200 px-4 py-3">
-          <CheckCircle2 className="size-5 text-green-600 shrink-0 mt-0.5" />
-          <div className="min-w-0">
+        <button
+          type="button"
+          onClick={() => setShowDetails(true)}
+          className="flex w-full items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-left transition hover:bg-green-100/50"
+        >
+          <CheckCircle2 className="size-5 text-green-600 shrink-0" />
+          <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-green-900">
               {t.dispatch.accepted(technician.name)}
             </p>
@@ -220,7 +249,11 @@ export function DispatchScreen() {
               €{price} · {t.dispatch.arrivalIn} {countdown}
             </p>
           </div>
-        </div>
+          <span className="flex shrink-0 items-center gap-0.5 text-xs font-medium text-green-700">
+            {t.dispatch.detailsShort}
+            <ChevronRight className="size-4" />
+          </span>
+        </button>
       </div>
 
       {/* Technician card */}
@@ -343,6 +376,56 @@ export function DispatchScreen() {
           <Send className="size-4" />
         </Button>
       </div>
+
+      {/* Order-details bottom drawer (anchored to the card content). */}
+      {showDetails && (
+        <>
+          <button
+            type="button"
+            aria-label="Schließen"
+            onClick={() => setShowDetails(false)}
+            className="absolute inset-0 z-40 bg-black/25 drawer-fade"
+          />
+          <div className="absolute inset-x-0 bottom-0 z-50 max-h-[85%] overflow-y-auto rounded-t-2xl border-t bg-background p-4 shadow-[0_-8px_30px_-8px_rgba(0,0,0,0.25)] drawer-up">
+            <div className="flex items-center justify-between">
+              <p className="font-heading text-base font-medium">{t.dispatch.orderDetails}</p>
+              <Button variant="ghost" size="icon-sm" onClick={() => setShowDetails(false)} aria-label="Schließen">
+                <X className="size-4" />
+              </Button>
+            </div>
+            <div className="mt-3 space-y-2.5 pb-2 text-sm">
+              {([
+                { icon: Fuel, label: t.offer.labels.situation, value: store.situation },
+                { icon: Zap, label: t.offer.labels.engineStarted, value: store.engineStarted },
+                { icon: Fuel, label: t.offer.labels.litres, value: store.litres },
+                { icon: Car, label: t.offer.labels.vehicle, value: store.vehicle },
+                { icon: MapPin, label: t.offer.labels.location, value: store.location },
+                { icon: User, label: t.offer.contactName, value: store.contactName },
+                { icon: Phone, label: t.offer.contactPhone, value: store.contactPhone },
+              ] as { icon: React.ElementType; label: string; value: string }[]).map(({ icon: Icon, label, value }) => (
+                <div key={label} className="flex items-start justify-between gap-3">
+                  <span className="flex shrink-0 items-center gap-2 text-muted-foreground">
+                    <Icon className="size-4 shrink-0" />
+                    {label}
+                  </span>
+                  <span className="text-right font-medium">{value || '—'}</span>
+                </div>
+              ))}
+              {store.vehicleDocUrl && (
+                <a
+                  href={store.vehicleDocUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 pt-1 text-primary hover:underline"
+                >
+                  <ExternalLink className="size-4" />
+                  {t.dispatch.viewDoc}
+                </a>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import type { Lang } from '@/lib/i18n'
 import type { VehicleDoc } from '@/lib/orders'
 
@@ -65,23 +66,49 @@ const initialState: CaseState = {
   lang: 'de',
 }
 
-export const useAppStore = create<CaseState & AppActions>((set) => ({
-  ...initialState,
-  setSituation: (v) => set({ situation: v }),
-  setEngineStarted: (v) => set({ engineStarted: v }),
-  setLitres: (v) => set({ litres: v }),
-  setLocation: (v) => set({ location: v }),
-  setVehicle: (v) => set({ vehicle: v }),
-  setContactName: (v) => set({ contactName: v }),
-  setContactPhone: (v) => set({ contactPhone: v }),
-  setAllComplete: (v) => set({ allComplete: v }),
-  setEta: (v) => set({ eta: v }),
-  setPrice: (v) => set({ price: v }),
-  setOrderId: (v) => set({ orderId: v }),
-  setSeedAudio: (v) => set({ seedAudio: v }),
-  setVehicleDoc: (v) => set({ vehicleDoc: v }),
-  setVehicleDocUrl: (v) => set({ vehicleDocUrl: v }),
-  setCurrentStep: (v) => set({ currentStep: v }),
-  setLang: (v) => set({ lang: v }),
-  resetCase: () => set(initialState),
-}))
+// Persisted so a page refresh on the order / dispatch screens keeps the case.
+// seedAudio (large base64) is deliberately excluded.
+export const useAppStore = create<CaseState & AppActions>()(
+  persist(
+    (set) => ({
+      ...initialState,
+      setSituation: (v) => set({ situation: v }),
+      setEngineStarted: (v) => set({ engineStarted: v }),
+      setLitres: (v) => set({ litres: v }),
+      setLocation: (v) => set({ location: v }),
+      setVehicle: (v) => set({ vehicle: v }),
+      setContactName: (v) => set({ contactName: v }),
+      setContactPhone: (v) => set({ contactPhone: v }),
+      setAllComplete: (v) => set({ allComplete: v }),
+      setEta: (v) => set({ eta: v }),
+      setPrice: (v) => set({ price: v }),
+      setOrderId: (v) => set({ orderId: v }),
+      setSeedAudio: (v) => set({ seedAudio: v }),
+      setVehicleDoc: (v) => set({ vehicleDoc: v }),
+      setVehicleDocUrl: (v) => set({ vehicleDocUrl: v }),
+      setCurrentStep: (v) => set({ currentStep: v }),
+      setLang: (v) => set({ lang: v }),
+      resetCase: () => set(initialState),
+    }),
+    {
+      name: 'tankhilfe.case.v1',
+      partialize: (s) => ({
+        situation: s.situation,
+        engineStarted: s.engineStarted,
+        litres: s.litres,
+        location: s.location,
+        vehicle: s.vehicle,
+        contactName: s.contactName,
+        contactPhone: s.contactPhone,
+        allComplete: s.allComplete,
+        eta: s.eta,
+        price: s.price,
+        orderId: s.orderId,
+        vehicleDoc: s.vehicleDoc,
+        vehicleDocUrl: s.vehicleDocUrl,
+        currentStep: s.currentStep,
+        lang: s.lang,
+      }),
+    },
+  ),
+)

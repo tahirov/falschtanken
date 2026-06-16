@@ -24,28 +24,24 @@ function json(body: unknown, status = 200): Response {
   })
 }
 
-const LINE_LABEL: Record<string, string> = {
-  removal: 'Absaugen des Falschkraftstoffs',
-  disposal: 'Entsorgung',
-  driving: 'Anfahrt',
-  labour: 'Arbeitszeit',
-}
-const RATE_LABEL: Record<string, string> = {
-  standard: 'Normaltarif',
-  evening: 'Abendzuschlag',
-  night: 'Nachtzuschlag',
-  weekend: 'Wochenendzuschlag',
-  weekendNight: 'Wochenend-/Nachtzuschlag',
+const QUOTE_LABEL: Record<string, string> = {
+  base: 'Grundpreis (Anfahrt)',
+  eveningSurcharge: 'Zuschlag ab 18 Uhr',
+  nightSurcharge: 'Zuschlag ab 22 Uhr',
+  weekendSurcharge: 'Wochenendzuschlag',
+  pumpDisposal: 'Abpumpen & Entsorgung',
+  flush: 'Spülung Tank/Filter/Schlauch',
+  delivery: 'Lieferung Kraftstoff',
 }
 
 interface QuoteLine { key: string; amount: number }
 interface Quote {
   lines: QuoteLine[]
   litres: number
-  labourHours: number
-  hourlyRate: number
-  rateNote: string
-  total: number
+  driveMinutes?: number
+  net: number
+  vat: number
+  gross: number
   eta: number
 }
 interface VehicleDoc {
@@ -74,7 +70,7 @@ interface OrderInput {
 }
 
 function buildText(o: OrderInput, q: Quote | undefined): string {
-  const total = q?.total ?? o.price ?? 0
+  const total = q?.gross ?? o.price ?? 0
   const eta = q?.eta ?? o.eta_minutes ?? 0
   const lines: string[] = [
     `🚨 Neuer Auftrag · €${total} · ETA ${eta} Min.`,
@@ -99,14 +95,13 @@ function buildText(o: OrderInput, q: Quote | undefined): string {
     if (docBits.length) lines.push(`📄 Fahrzeugschein: ${docBits.join(' · ')}`)
   }
   if (q?.lines?.length) {
-    lines.push('', '💶 Kostenübersicht')
+    lines.push('', '💶 Kostenübersicht (netto)')
     for (const l of q.lines) {
-      let label = LINE_LABEL[l.key] ?? l.key
-      if (l.key === 'disposal') label += ` (${q.litres} L)`
-      if (l.key === 'labour') label += ` (${q.labourHours} Std. × €${q.hourlyRate}/Std., ${RATE_LABEL[q.rateNote] ?? q.rateNote})`
+      let label = QUOTE_LABEL[l.key] ?? l.key
+      if ((l.key === 'pumpDisposal' || l.key === 'delivery') && q.litres) label += ` (${q.litres} L)`
       lines.push(`• ${label}: €${l.amount}`)
     }
-    lines.push(`Gesamt: €${q.total}`)
+    lines.push(`Netto: €${q.net}`, `MwSt 19%: €${q.vat}`, `Gesamt: €${q.gross}`)
   }
   return lines.join('\n')
 }
@@ -123,41 +118,49 @@ function waNumber(phone?: string): string | null {
   return d.length >= 10 && d.length <= 15 ? d : null
 }
 
+type Btn = { text: string; callback_data?: string; url?: string }
+
 function buildKeyboard(id: string, o: OrderInput) {
-  const rows: { text: string; callback_data?: string; url?: string }[][] = [
+  const rows: Btn[][] = [
     [
       { text: '✅ Annehmen', callback_data: `accept:${id}` },
       { text: '❌ Ablehnen', callback_data: `decline:${id}` },
     ],
   ]
-  const links: { text: string; url: string }[] = []
+  // Contact actions. Telegram forbids tel: button URLs, so "Anrufen" is a
+  // callback that makes the bot send the customer as a contact card (which has
+  // a native Call button); WhatsApp is a valid wa.me link.
+  const wa = waNumber(o.contact_phone)
+  const contact: Btn[] = []
+  if (wa) contact.push({ text: '📞 Anrufen', callback_data: `call:${id}` })
+  if (wa) contact.push({ text: '💬 WhatsApp', url: `https://wa.me/${wa}` })
+  if (contact.length) rows.push(contact)
+
+  const info: Btn[] = []
   if (o.location) {
-    links.push({
-      text: '🗺 Karte öffnen',
+    info.push({
+      text: '🗺 Karte',
       url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.location)}`,
     })
   }
-  // WhatsApp (wa.me is a valid https button URL). Calling is still handled by
-  // the contact card sent on accept, since tel: can't be a Telegram button.
-  const wa = waNumber(o.contact_phone)
-  if (wa) links.push({ text: '💬 WhatsApp', url: `https://wa.me/${wa}` })
-  if (o.vehicle_doc_url) {
-    links.push({ text: '📄 Fahrzeugschein', url: o.vehicle_doc_url })
-  }
-  if (links.length) rows.push(links)
+  if (o.vehicle_doc_url) info.push({ text: '📄 Fahrzeugschein', url: o.vehicle_doc_url })
+  if (info.length) rows.push(info)
+
   return { inline_keyboard: rows }
 }
 
-async function tg(method: string, body: unknown): Promise<void> {
-  if (!BOT) return
+async function tg(method: string, body: unknown): Promise<any> {
+  if (!BOT) return null
   try {
-    await fetch(`https://api.telegram.org/bot${BOT}/${method}`, {
+    const r = await fetch(`https://api.telegram.org/bot${BOT}/${method}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
+    return await r.json()
   } catch (_) {
     // best-effort: a notification failure must not fail the order
+    return null
   }
 }
 

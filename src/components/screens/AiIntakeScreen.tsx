@@ -16,7 +16,8 @@ import {
   type AgentFields,
   type AgentResult,
 } from '@/lib/intakeAgent'
-import { calculateQuote, type Quote } from '@/lib/pricingLogic'
+import { calculateQuote, type Quote, type QuoteLineKey } from '@/lib/pricingLogic'
+import { driveInfoToBase, MAX_SERVICE_KM } from '@/lib/geocode'
 import { submitOrder } from '@/lib/orders'
 import { WavRecorder } from '@/lib/audioRecorder'
 import { reverseGeocode } from '@/lib/geocode'
@@ -116,15 +117,26 @@ export function AiIntakeScreen() {
     applyFields(result.fields)
     setSuggestions(result.complete ? [] : result.suggestions)
     setAskingLocation(!result.complete && result.asksLocation)
-    if (result.complete) {
-      const q = calculateQuote(
-        result.fields.engineStarted ?? store.engineStarted,
-        result.fields.litres ?? store.litres,
-      )
-      store.setPrice(q.total)
-      store.setEta(q.eta)
-      setQuote(q)
+    if (result.complete) buildQuote(result)
+  }
+
+  // Build the in-thread quote once complete: drive time to base → price sheet.
+  async function buildQuote(result: AgentResult) {
+    const loc = result.fields.location ?? store.location
+    const info = await driveInfoToBase(loc || '')
+    if (info && info.km > MAX_SERVICE_KM) {
+      // Beyond the service radius — tell the customer instead of quoting.
+      setMessages((prev) => [...prev, { role: 'assistant', content: t.offer.outOfRange(info.km) }])
+      return
     }
+    const q = calculateQuote(
+      info?.minutes ?? 45,
+      result.fields.litres ?? store.litres,
+      result.fields.engineStarted ?? store.engineStarted,
+    )
+    store.setPrice(q.gross)
+    store.setEta(q.eta)
+    setQuote(q)
   }
 
   async function runTurn(text: string) {
@@ -236,14 +248,16 @@ export function AiIntakeScreen() {
         contact_name: store.contactName.trim(),
         contact_phone: store.contactPhone.trim(),
         severity: quote.severity,
-        price: quote.total,
+        price: quote.gross,
         eta_minutes: quote.eta,
         lang,
+        vehicle_doc: store.vehicleDoc,
+        vehicle_doc_url: store.vehicleDocUrl,
       },
       quote,
     )
     store.setOrderId(id)
-    if (id) saveDispatch({ orderId: id, price: quote.total, eta: quote.eta })
+    if (id) saveDispatch({ orderId: id, price: quote.gross, eta: quote.eta })
     clearChat() // case submitted — don't restore/re-submit it later
     navigate('/dispatch')
   }
@@ -391,13 +405,12 @@ export function AiIntakeScreen() {
 
 function QuoteCard({ quote }: { quote: Quote }) {
   const lang = useAppStore((s) => s.lang)
-  const q = translations[lang].aiIntake.quote
+  const t = translations[lang]
+  const q = t.aiIntake.quote
 
-  const lineLabel: Record<Quote['lines'][number]['key'], string> = {
-    removal: q.lineRemoval,
-    disposal: q.lineDisposal(quote.litres),
-    driving: q.lineDriving,
-    labour: q.lineLabour(quote.labourHours, quote.hourlyRate),
+  const label = (key: QuoteLineKey): string => {
+    const base = t.offer.quoteLines[key]
+    return key === 'pumpDisposal' || key === 'delivery' ? `${base} (${quote.litres} L)` : base
   }
 
   return (
@@ -414,22 +427,23 @@ function QuoteCard({ quote }: { quote: Quote }) {
         <div className="space-y-1.5">
           {quote.lines.map((line) => (
             <div key={line.key} className="flex items-baseline justify-between gap-3 text-sm">
-              <span className="text-muted-foreground">
-                {lineLabel[line.key]}
-                {line.key === 'labour' && (
-                  <span className="ml-1.5 inline-block rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-foreground/70">
-                    {q.rateNotes[quote.rateNote]}
-                  </span>
-                )}
-              </span>
+              <span className="text-muted-foreground">{label(line.key)}</span>
               <span className="font-medium tabular-nums whitespace-nowrap">€{line.amount}</span>
             </div>
           ))}
         </div>
 
-        <div className="flex items-center justify-between border-t pt-2.5">
-          <span className="text-sm font-semibold">{q.total}</span>
-          <span className="font-heading text-2xl font-bold tabular-nums">€{quote.total}</span>
+        <div className="space-y-1 border-t pt-2.5">
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>{t.offer.netLabel}</span><span className="tabular-nums">€{quote.net}</span>
+          </div>
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>{t.offer.vatLabel}</span><span className="tabular-nums">€{quote.vat}</span>
+          </div>
+          <div className="flex items-center justify-between pt-0.5">
+            <span className="text-sm font-semibold">{t.offer.grossLabel}</span>
+            <span className="font-heading text-2xl font-bold tabular-nums">€{quote.gross}</span>
+          </div>
         </div>
       </CardContent>
     </Card>

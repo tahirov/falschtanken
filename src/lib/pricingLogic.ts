@@ -45,37 +45,43 @@ export function generateEta(): number {
 }
 
 // ---------------------------------------------------------------------------
-// Quote breakdown
+// Quote breakdown — official Tankhilfe24 price sheet (net prices, + 19% VAT).
 // ---------------------------------------------------------------------------
-// Placeholder pricing model: a fixed call-out for draining the misfuelled tank,
-// disposal billed per affected litre, a flat drive-out fee, and labour at an
-// hourly rate that rises in the evening, at night and on weekends.
+// • Grundpreis by drive-time zone from our base: ≤30 min 200€, ≤60 min 300€,
+//   then +100€ per additional 30 min.
+// • Time surcharges: from 18:00 +50€, from 22:00 +70€, weekend +90€.
+// • Abpumpen & Entsorgung 2€/L, Spülung 90€ (when the engine ran),
+//   Lieferung Diesel/Benzin 2€/L.
 
-export type RateNote = 'standard' | 'evening' | 'night' | 'weekend' | 'weekendNight'
+export const VAT_RATE = 0.19
+
+export type QuoteLineKey =
+  | 'base'
+  | 'eveningSurcharge'
+  | 'nightSurcharge'
+  | 'weekendSurcharge'
+  | 'pumpDisposal'
+  | 'flush'
+  | 'delivery'
 
 export interface QuoteLine {
-  key: 'removal' | 'disposal' | 'driving' | 'labour'
+  key: QuoteLineKey
   amount: number
 }
 
 export interface Quote {
   lines: QuoteLine[]
   litres: number
-  labourHours: number
-  hourlyRate: number
-  rateNote: RateNote
-  total: number
+  driveMinutes: number
+  net: number
+  vat: number
+  gross: number
+  /** Estimated arrival in minutes (≈ drive time). */
   eta: number
   severity: Severity
 }
 
-const REMOVAL_BASE: Record<Severity, number> = { low: 120, medium: 160, high: 220 }
-const LABOUR_HOURS: Record<Severity, number> = { low: 1, medium: 1.5, high: 2 }
-const DISPOSAL_PER_LITRE = 3
-const DRIVING_FLAT = 49
-const BASE_HOURLY = 90
-
-/** Best-effort litres from a free-text answer (e.g. "20 L petrol, 5 L diesel"). */
+/** Best-effort litres from a free-text answer (e.g. "5–15 Liter, Tank fast leer"). */
 export function parseLitres(text: string): number {
   const matches = (text ?? '').match(/\d+(?:[.,]\d+)?/g)
   if (!matches) return 20
@@ -84,34 +90,37 @@ export function parseLitres(text: string): number {
   return Math.min(Math.max(Math.max(...nums), 1), 80)
 }
 
-function hourlyRate(date: Date): { rate: number; note: RateNote } {
-  const day = date.getDay() // 0 = Sunday … 6 = Saturday
-  const hour = date.getHours()
-  const weekend = day === 0 || day === 6
-  const night = hour >= 22 || hour < 6
-  const evening = !night && hour >= 18
-  if (night) return { rate: weekend ? 165 : 150, note: weekend ? 'weekendNight' : 'night' }
-  if (weekend) return { rate: 130, note: 'weekend' }
-  if (evening) return { rate: 110, note: 'evening' }
-  return { rate: BASE_HOURLY, note: 'standard' }
+/** Grundpreis from the drive-time zone. */
+function basePrice(driveMinutes: number): number {
+  if (driveMinutes <= 30) return 200
+  if (driveMinutes <= 60) return 300
+  return 300 + 100 * Math.ceil((driveMinutes - 60) / 30)
 }
 
 export function calculateQuote(
-  engineStarted: string,
+  driveMinutes: number,
   litresText: string,
+  engineStarted: string,
   now: Date = new Date(),
 ): Quote {
   const severity = calculateSeverity(engineStarted)
   const litres = parseLitres(litresText)
-  const { rate, note } = hourlyRate(now)
-  const labourHours = LABOUR_HOURS[severity]
+  const m = Math.max(0, Math.round(driveMinutes))
 
-  const lines: QuoteLine[] = [
-    { key: 'removal', amount: REMOVAL_BASE[severity] },
-    { key: 'disposal', amount: Math.round(litres * DISPOSAL_PER_LITRE) },
-    { key: 'driving', amount: DRIVING_FLAT },
-    { key: 'labour', amount: Math.round(labourHours * rate) },
-  ]
-  const total = lines.reduce((sum, l) => sum + l.amount, 0)
-  return { lines, litres, labourHours, hourlyRate: rate, rateNote: note, total, eta: generateEta(), severity }
+  const lines: QuoteLine[] = [{ key: 'base', amount: basePrice(m) }]
+
+  const hour = now.getHours()
+  const weekend = now.getDay() === 0 || now.getDay() === 6
+  if (hour >= 22) lines.push({ key: 'nightSurcharge', amount: 70 })
+  else if (hour >= 18) lines.push({ key: 'eveningSurcharge', amount: 50 })
+  if (weekend) lines.push({ key: 'weekendSurcharge', amount: 90 })
+
+  lines.push({ key: 'pumpDisposal', amount: litres * 2 })
+  if (severity !== 'low') lines.push({ key: 'flush', amount: 90 })
+  lines.push({ key: 'delivery', amount: litres * 2 })
+
+  const net = lines.reduce((sum, l) => sum + l.amount, 0)
+  const vat = Math.round(net * VAT_RATE)
+  const gross = net + vat
+  return { lines, litres, driveMinutes: m, net, vat, gross, eta: Math.max(m, 1), severity }
 }

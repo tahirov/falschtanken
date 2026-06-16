@@ -10,7 +10,7 @@ import {
 import { useAppStore } from '@/store/useAppStore'
 import { translations } from '@/lib/i18n'
 import { reverseGeocode } from '@/lib/geocode'
-import { scanVehicleDoc } from '@/lib/vehicleDoc'
+import { scanVehicleDoc, ACCEPT_ATTR, MAX_UPLOAD_MB } from '@/lib/vehicleDoc'
 import { IntakeTabs } from '@/components/IntakeTabs'
 
 // Each step writes its answer somewhere in the case. `kind` drives the UI.
@@ -242,6 +242,10 @@ export function IntakeScreen() {
   }
 
   async function onPhoto(file: File) {
+    if (file.size > MAX_UPLOAD_MB * 1024 * 1024) {
+      toast.error(tk.photo.tooLarge)
+      return
+    }
     setScanning(true)
     setScanned(false)
     const result = await scanVehicleDoc(file, lang)
@@ -253,6 +257,9 @@ export function IntakeScreen() {
       const parts = [result.vehicle, result.doc.kraftstoff].filter(Boolean).join(', ')
       if (parts) store.setVehicle(parts)
       setScanned(true)
+    } else if (result.url) {
+      // Stored as a reference (e.g. a PDF) but not auto-read — ask them to type.
+      toast.success(tk.photo.attached)
     } else {
       toast.error(tk.photo.error)
     }
@@ -371,7 +378,7 @@ export function IntakeScreen() {
             <input
               ref={uploadRef}
               type="file"
-              accept="image/*"
+              accept={ACCEPT_ATTR}
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0]
@@ -443,6 +450,7 @@ export function IntakeScreen() {
                   </Button>
                 </div>
                 <p className="text-center text-xs text-muted-foreground">{tk.photo.hint}</p>
+                <p className="text-center text-[11px] text-muted-foreground/80">{tk.photo.formats}</p>
               </>
             )}
           </>

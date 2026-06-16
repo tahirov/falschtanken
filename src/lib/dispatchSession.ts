@@ -4,12 +4,20 @@
 
 const KEY = 'tankhilfe.dispatch.v1'
 
+export interface DispatchMessage {
+  id: number
+  from: 'tech' | 'user' | 'system'
+  text: string
+}
+
 export interface DispatchSnapshot {
   orderId: string
   price: number
   eta: number
   /** Absolute arrival deadline (ms epoch) so the countdown survives refresh. */
   arrivalAt?: number
+  /** Conversation with the technician, so it survives a refresh. */
+  messages?: DispatchMessage[]
 }
 
 export function loadDispatch(): DispatchSnapshot | null {

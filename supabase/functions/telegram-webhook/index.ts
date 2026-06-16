@@ -69,6 +69,23 @@ Deno.serve(async (req) => {
   const cq = update.callback_query
   if (cq?.data) {
     const [action, id] = String(cq.data).split(':')
+    // "Anrufen" button: send the customer as a contact card (native Call button).
+    if (action === 'call' && id) {
+      const { data: ord } = await supabase
+        .from('orders')
+        .select('contact_name, contact_phone')
+        .eq('id', id)
+        .maybeSingle()
+      if (ord?.contact_phone && cq.message?.chat?.id) {
+        await tg('sendContact', {
+          chat_id: cq.message.chat.id,
+          phone_number: ord.contact_phone,
+          first_name: ord.contact_name || 'Kunde',
+        })
+      }
+      await tg('answerCallbackQuery', { callback_query_id: cq.id, text: '📇 Kontakt gesendet' })
+      return new Response('ok')
+    }
     if ((action === 'accept' || action === 'decline') && id) {
       const status = action === 'accept' ? 'dispatched' : 'cancelled'
       const chatId = String(cq.message?.chat?.id ?? '')
@@ -92,17 +109,22 @@ Deno.serve(async (req) => {
         // all buttons. (Telegram removes the keyboard unless reply_markup is set.)
         let reply_markup: unknown
         if (action === 'accept' && ord) {
-          const links: { text: string; url: string }[] = []
+          const rows: { text: string; url?: string; callback_data?: string }[][] = []
+          const wa = waNumber(ord.contact_phone)
+          const contact: { text: string; url?: string; callback_data?: string }[] = []
+          if (wa) contact.push({ text: '📞 Anrufen', callback_data: `call:${id}` })
+          if (wa) contact.push({ text: '💬 WhatsApp', url: `https://wa.me/${wa}` })
+          if (contact.length) rows.push(contact)
+          const info: { text: string; url?: string }[] = []
           if (ord.location) {
-            links.push({
-              text: '🗺 Karte öffnen',
+            info.push({
+              text: '🗺 Karte',
               url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ord.location)}`,
             })
           }
-          const wa = waNumber(ord.contact_phone)
-          if (wa) links.push({ text: '💬 WhatsApp', url: `https://wa.me/${wa}` })
-          if (ord.vehicle_doc_url) links.push({ text: '📄 Fahrzeugschein', url: ord.vehicle_doc_url })
-          if (links.length) reply_markup = { inline_keyboard: [links] }
+          if (ord.vehicle_doc_url) info.push({ text: '📄 Fahrzeugschein', url: ord.vehicle_doc_url })
+          if (info.length) rows.push(info)
+          if (rows.length) reply_markup = { inline_keyboard: rows }
         }
         await tg('editMessageText', {
           chat_id: cq.message.chat.id,
