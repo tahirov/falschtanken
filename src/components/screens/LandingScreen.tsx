@@ -36,6 +36,8 @@ export function LandingScreen() {
   const [cursorOn, setCursorOn] = useState(true)
   const placeholders = t.promptPlaceholders
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  // Pick a headline variant once per load; it cycles across visits.
+  const [titleIdx] = useState(() => Math.floor(Math.random() * t.heroTitles.length))
 
   // Picking a suggestion fills the box (doesn't auto-submit) so the user can
   // tweak it or just press Enter / the arrow to start.
@@ -162,7 +164,7 @@ export function LandingScreen() {
       {/* Hero */}
       <div className="px-6 pt-16 pb-8 text-center">
         <h1 className="gradient-headline font-heading text-2xl sm:text-4xl font-bold leading-[1.2] tracking-tight text-balance pb-[0.12em]">
-          {t.heroTitle}
+          {t.heroTitles[titleIdx] ?? t.heroTitles[0]}
         </h1>
         <p className="text-muted-foreground text-base mt-4 max-w-xs mx-auto text-balance">
           {t.heroSubtitle}

@@ -4,7 +4,13 @@ export const translations = {
   de: {
     appName: 'Tankhilfe24',
     tagline: 'Soforthilfe bei Falschbetankung',
-    heroTitle: 'Falsch getankt? Wir machen das wieder gut.',
+    heroTitles: [
+      'Falsch getankt? Wir machen das wieder gut.',
+      'Falscher Sprit im Tank? Wir sind schon unterwegs.',
+      'Einmal falsch getankt – wir kümmern uns um den Rest.',
+      'Kein Grund zur Panik. Wir holen Sie da raus.',
+      'Falsch betankt? Atmen Sie durch – wir regeln das.',
+    ],
     heroSubtitle: 'Per Nachricht oder Sprachnachricht beschreiben — Hilfe ist rund um die Uhr unterwegs.',
     speakButton: 'Sprechen Sie jetzt',
     orChoose: 'Oder wählen Sie Ihre Situation',
@@ -183,7 +189,13 @@ export const translations = {
   en: {
     appName: 'Tankhilfe24',
     tagline: 'Emergency help for misfuelling',
-    heroTitle: "Wrong fuel? We'll make it right.",
+    heroTitles: [
+      "Wrong fuel? We'll make it right.",
+      'Wrong fuel in the tank? Help is already moving.',
+      "One wrong fill-up — we'll take it from here.",
+      "No panic. We'll get you out of this.",
+      "Misfuelled? Take a breath — we've got it.",
+    ],
     heroSubtitle: 'Describe it in a message or a voice note — help is on the way, around the clock.',
     speakButton: 'Speak now',
     orChoose: 'Or choose your situation',
@@ -362,7 +374,13 @@ export const translations = {
   pl: {
     appName: 'Tankhilfe24',
     tagline: 'Natychmiastowa pomoc przy błędnym tankowaniu',
-    heroTitle: 'Złe paliwo? Naprawimy to.',
+    heroTitles: [
+      'Złe paliwo? Naprawimy to.',
+      'Złe paliwo w baku? Pomoc już jedzie.',
+      'Jedno pomyłkowe tankowanie — resztą zajmiemy się my.',
+      'Bez paniki. Wyciągniemy Cię z tego.',
+      'Pomyłka przy tankowaniu? Spokojnie — zajmiemy się tym.',
+    ],
     heroSubtitle: 'Opisz wiadomością lub głosowo — pomoc jedzie całą dobę.',
     speakButton: 'Mów teraz',
     orChoose: 'Lub wybierz swoją sytuację',
