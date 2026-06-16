@@ -19,6 +19,8 @@ export interface AgentResult {
   transcript: string | null
   /** Context-relevant quick-reply options for the question just asked. */
   suggestions: string[]
+  /** True when the current reply asks the customer for their location. */
+  asksLocation: boolean
 }
 
 export interface AgentMessage {

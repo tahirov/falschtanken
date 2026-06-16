@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
-import { Car, Send, Clock, Loader2, Mic, Square } from 'lucide-react'
+import { Car, Send, Clock, Loader2, Mic, Square, MapPin } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAppStore } from '@/store/useAppStore'
 import { translations, type Lang } from '@/lib/i18n'
@@ -33,6 +33,8 @@ export function AiIntakeScreen() {
   const [submitting, setSubmitting] = useState(false)
   const [recording, setRecording] = useState(false)
   const [suggestions, setSuggestions] = useState<string[]>([])
+  const [askingLocation, setAskingLocation] = useState(false)
+  const [locating, setLocating] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
   const seeded = useRef(false)
   const recorderRef = useRef<WavRecorder | null>(null)
@@ -112,6 +114,7 @@ export function AiIntakeScreen() {
   function applyAgentResult(result: AgentResult) {
     applyFields(result.fields)
     setSuggestions(result.complete ? [] : result.suggestions)
+    setAskingLocation(!result.complete && result.asksLocation)
     if (result.complete) {
       const q = calculateQuote(
         result.fields.engineStarted ?? store.engineStarted,
@@ -129,6 +132,7 @@ export function AiIntakeScreen() {
     const next: AgentMessage[] = [...messages, { role: 'user', content: clean }]
     setMessages(next)
     setSuggestions([])
+    setAskingLocation(false)
     setBusy(true)
     const { result, error } = await runIntakeAgent(next, lang)
     setBusy(false)
@@ -146,6 +150,7 @@ export function AiIntakeScreen() {
     if (busy || quote) return
     const history = messages
     setSuggestions([])
+    setAskingLocation(false)
     setBusy(true)
     const { result, error } = await runIntakeAgentVoice(history, wavBase64, lang)
     setBusy(false)
@@ -192,6 +197,27 @@ export function AiIntakeScreen() {
     const text = input
     setInput('')
     runTurn(text)
+  }
+
+  function shareLocation() {
+    if (busy || quote || locating) return
+    if (!navigator.geolocation) {
+      toast.error(t.aiIntake.locationError)
+      return
+    }
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocating(false)
+        const { latitude, longitude } = pos.coords
+        runTurn(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`)
+      },
+      () => {
+        setLocating(false)
+        toast.error(t.aiIntake.locationError)
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    )
   }
 
   async function confirmOrder() {
@@ -289,8 +315,24 @@ export function AiIntakeScreen() {
         </div>
       ) : (
         <div className="border-t">
-          {chipOptions.length > 0 && !busy && !recording && (
+          {(chipOptions.length > 0 || askingLocation) && !busy && !recording && (
             <div className="flex flex-wrap gap-2 px-4 pt-3">
+              {askingLocation && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full font-normal gap-1.5"
+                  onClick={shareLocation}
+                  disabled={locating}
+                >
+                  {locating ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <MapPin className="size-4" />
+                  )}
+                  {locating ? t.aiIntake.locating : t.aiIntake.shareLocation}
+                </Button>
+              )}
               {chipOptions.map((s) => (
                 <Button
                   key={s}

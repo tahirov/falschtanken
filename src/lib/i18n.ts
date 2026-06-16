@@ -163,6 +163,9 @@ export const translations = {
       listening: 'Ich höre zu…',
       voiceNote: 'Sprachnachricht',
       micError: 'Mikrofon konnte nicht gestartet werden. Bitte erlauben Sie den Zugriff.',
+      shareLocation: 'Standort teilen',
+      locating: 'Standort wird ermittelt…',
+      locationError: 'Standort konnte nicht ermittelt werden. Bitte erlauben Sie den Zugriff oder geben Sie ihn ein.',
       error: 'Es gab ein Problem bei der Analyse. Bitte versuchen Sie es noch einmal.',
       complete: 'Danke! Alle Informationen sind vollständig — einen Moment…',
       quote: {
@@ -348,6 +351,9 @@ export const translations = {
       listening: 'Listening…',
       voiceNote: 'Voice message',
       micError: 'Could not start the microphone. Please allow access.',
+      shareLocation: 'Share location',
+      locating: 'Getting your location…',
+      locationError: 'Could not get your location. Please allow access or type it in.',
       error: 'Something went wrong during analysis. Please try again.',
       complete: 'Thanks! I have everything I need — one moment…',
       quote: {
@@ -533,6 +539,9 @@ export const translations = {
       listening: 'Słucham…',
       voiceNote: 'Wiadomość głosowa',
       micError: 'Nie można uruchomić mikrofonu. Zezwól na dostęp.',
+      shareLocation: 'Udostępnij lokalizację',
+      locating: 'Ustalanie lokalizacji…',
+      locationError: 'Nie udało się ustalić lokalizacji. Zezwól na dostęp lub wpisz ją.',
       error: 'Wystąpił problem podczas analizy. Spróbuj ponownie.',
       complete: 'Dziękuję! Mam wszystkie potrzebne informacje — chwila…',
       quote: {

@@ -43,7 +43,7 @@ Collect these required fields:
 - situation: which fuel was wrongly added (e.g. petrol in diesel, diesel in petrol, wrong AdBlue, other fuel)
 - engineStarted: did they start/drive after misfuelling? (not at all / started briefly / drove it / unsure)
 - litres: BOTH how many litres of the WRONG fuel were added AND how much correct fuel was already in the tank (or how full the tank is overall). The mixing ratio decides how serious it is, so you must know both parts. Stays null until you know the wrong-fuel amount AND the existing fuel level/tank fullness.
-- location: where they are now, precise enough to dispatch a recovery vehicle. It MUST contain at least a street name, OR a clearly identifiable approximate spot — a motorway/road with direction and the nearest exit/junction (Auffahrt/Ausfahrt), a named petrol station, a car park, or a well-known landmark. A bare city or town name alone is NOT enough; if that is all you have, keep this null and ask for a more precise location.
+- location: where they are now, precise enough to dispatch a recovery vehicle. It MUST contain at least a street name, OR a clearly identifiable approximate spot — a motorway/road with direction and the nearest exit/junction (Auffahrt/Ausfahrt), a named petrol station, a car park, or a well-known landmark. A bare city or town name alone is NOT enough; if that is all you have, keep this null and ask for a more precise location. GPS coordinates (e.g. "52.51630, 13.37770") count as a fully valid, precise location — accept them as-is.
 - vehicle: make, model and year
 - contactName: the customer's full name
 - contactPhone: a reachable phone number that is a VALID, COMPLETE format — it must have a sensible number of digits (roughly 7–15), may start with "+" and a country code, and contain only digits, spaces, "+", "-", "/", "(" and ")". If the number they give is too short, clearly incomplete, or obviously not a phone number, keep contactPhone null and ask them to re-check and give the full number.
@@ -64,10 +64,11 @@ Read the ENTIRE conversation EVERY turn and re-extract every field already provi
   • did the engine run → ["Nicht gestartet","Kurz angelassen","Bin gefahren","Nicht sicher"]
   • rough amount → ["Unter 5 L","5–15 L","15–30 L","Über 30 L"]
   For OPEN questions (exact location, vehicle make/model, name, phone number) and for the final confirmation, return an empty array []. Example of WRONG suggestions: the question text itself, or vague words like "Autobahn"/"Straße" for a location.
+- "asksLocation": set to true ONLY on a turn where your reply asks the customer where they are / for their location (so the app can offer a "share my location" button). Otherwise false.
 - VOICE MESSAGES: when the latest user message contains audio, you MUST first transcribe it and put the clean, verbatim transcription (in the spoken language) into the "transcript" field — this is required, never leave it null for an audio turn. Then extract the fields from that transcription exactly as you would from typed text. For purely typed messages, set "transcript" to null.
 
 Output ONLY a single minified JSON object, no markdown, no commentary, no <think> tags:
-{"fields":{"situation":string|null,"engineStarted":string|null,"litres":string|null,"location":string|null,"vehicle":string|null,"contactName":string|null,"contactPhone":string|null},"missing":string[],"complete":boolean,"reply":string,"transcript":string|null,"suggestions":string[]}`
+{"fields":{"situation":string|null,"engineStarted":string|null,"litres":string|null,"location":string|null,"vehicle":string|null,"contactName":string|null,"contactPhone":string|null},"missing":string[],"complete":boolean,"reply":string,"transcript":string|null,"suggestions":string[],"asksLocation":boolean}`
 }
 
 /** Pull a JSON object out of a possibly-reasoning model response. */
@@ -88,6 +89,7 @@ interface AgentResult {
   reply: string
   transcript: string | null
   suggestions: string[]
+  asksLocation: boolean
 }
 
 function normalize(parsed: Partial<AgentResult>): AgentResult {
@@ -112,6 +114,7 @@ function normalize(parsed: Partial<AgentResult>): AgentResult {
           .map((s) => s.trim())
           .slice(0, 4)
       : [],
+    asksLocation: parsed.asksLocation === true,
   }
 }
 
