@@ -30,6 +30,7 @@ export function AiIntakeScreen() {
   const [quote, setQuote] = useState<Quote | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [recording, setRecording] = useState(false)
+  const [suggestions, setSuggestions] = useState<string[]>([])
   const endRef = useRef<HTMLDivElement>(null)
   const seeded = useRef(false)
   const recorderRef = useRef<WavRecorder | null>(null)
@@ -63,10 +64,11 @@ export function AiIntakeScreen() {
     if (f.contactPhone) store.setContactPhone(f.contactPhone)
   }
 
-  // Apply a successful agent result: persist fields and, if the case is now
-  // complete, build the in-thread quote.
+  // Apply a successful agent result: persist fields, refresh quick-reply
+  // chips, and build the in-thread quote once the case is complete.
   function applyAgentResult(result: AgentResult) {
     applyFields(result.fields)
+    setSuggestions(result.complete ? [] : result.suggestions)
     if (result.complete) {
       const q = calculateQuote(
         result.fields.engineStarted ?? store.engineStarted,
@@ -83,6 +85,7 @@ export function AiIntakeScreen() {
     if (!clean || busy || quote) return
     const next: AgentMessage[] = [...messages, { role: 'user', content: clean }]
     setMessages(next)
+    setSuggestions([])
     setBusy(true)
     const { result, error } = await runIntakeAgent(next, lang)
     setBusy(false)
@@ -99,6 +102,7 @@ export function AiIntakeScreen() {
   async function runVoiceTurn(wavBase64: string) {
     if (busy || quote) return
     const history = messages
+    setSuggestions([])
     setBusy(true)
     const { result, error } = await runIntakeAgentVoice(history, wavBase64, lang)
     setBusy(false)
@@ -231,7 +235,23 @@ export function AiIntakeScreen() {
           <p className="text-center text-xs text-muted-foreground">{t.aiIntake.quote.disclaimer}</p>
         </div>
       ) : (
-        <div className="px-4 pb-4 pt-2 border-t flex gap-2 items-center">
+        <div className="border-t">
+          {suggestions.length > 0 && !busy && !recording && (
+            <div className="flex flex-wrap gap-2 px-4 pt-3">
+              {suggestions.map((s) => (
+                <Button
+                  key={s}
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full font-normal"
+                  onClick={() => runTurn(s)}
+                >
+                  {s}
+                </Button>
+              ))}
+            </div>
+          )}
+          <div className="px-4 pb-4 pt-2 flex gap-2 items-center">
           {recording ? (
             <div className="flex-1 flex items-center gap-2 h-10 px-3 rounded-md bg-muted">
               <span className="size-2.5 rounded-full bg-red-500 animate-pulse shrink-0" />
@@ -264,6 +284,7 @@ export function AiIntakeScreen() {
           >
             <Send className="size-4" />
           </Button>
+          </div>
         </div>
       )}
     </div>

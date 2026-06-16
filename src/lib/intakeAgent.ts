@@ -17,6 +17,8 @@ export interface AgentResult {
   reply: string
   /** Verbatim transcription when the turn was a voice message; null otherwise. */
   transcript: string | null
+  /** Context-relevant quick-reply options for the question just asked. */
+  suggestions: string[]
 }
 
 export interface AgentMessage {
