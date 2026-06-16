@@ -19,6 +19,7 @@ import {
 import { calculateQuote, type Quote } from '@/lib/pricingLogic'
 import { submitOrder } from '@/lib/orders'
 import { WavRecorder } from '@/lib/audioRecorder'
+import { reverseGeocode } from '@/lib/geocode'
 
 export function AiIntakeScreen() {
   const navigate = useNavigate()
@@ -207,10 +208,12 @@ export function AiIntakeScreen() {
     }
     setLocating(true)
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLocating(false)
+      async (pos) => {
         const { latitude, longitude } = pos.coords
-        runTurn(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`)
+        // Prefer a street address; fall back to coordinates if lookup fails.
+        const address = await reverseGeocode(latitude, longitude)
+        setLocating(false)
+        runTurn(address ?? `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`)
       },
       () => {
         setLocating(false)
