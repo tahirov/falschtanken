@@ -3,6 +3,17 @@ import type { Severity, Quote } from '@/lib/pricingLogic'
 
 export type OrderStatus = 'requested' | 'dispatched' | 'completed' | 'cancelled'
 
+/** Necessary fields scanned off a Fahrzeugschein (vehicle registration). */
+export interface VehicleDoc {
+  kennzeichen: string | null
+  marke: string | null
+  modell: string | null
+  erstzulassung: string | null
+  kraftstoff: string | null
+  leistung_kw: string | null
+  fin: string | null
+}
+
 export interface Order {
   id: string
   created_at: string
@@ -18,6 +29,8 @@ export interface Order {
   status: OrderStatus
   contact_name: string | null
   contact_phone: string | null
+  vehicle_doc: VehicleDoc | null
+  vehicle_doc_url: string | null
 }
 
 export interface NewOrder {
@@ -32,6 +45,8 @@ export interface NewOrder {
   price: number
   eta_minutes: number
   lang: string
+  vehicle_doc?: VehicleDoc | null
+  vehicle_doc_url?: string | null
 }
 
 /**
@@ -52,6 +67,8 @@ export async function createOrder(order: NewOrder): Promise<{ error: string | nu
     price: order.price,
     eta_minutes: order.eta_minutes,
     lang: order.lang,
+    vehicle_doc: order.vehicle_doc ?? null,
+    vehicle_doc_url: order.vehicle_doc_url ?? null,
     status: 'requested',
   })
   return { error: error?.message ?? null }
@@ -65,7 +82,7 @@ export async function createOrder(order: NewOrder): Promise<{ error: string | nu
  */
 export async function submitOrder(
   order: NewOrder,
-  quote: Quote,
+  quote?: Quote,
 ): Promise<{ error: string | null; id: string | null }> {
   const { data, error } = await supabase.functions.invoke('submit-order', {
     body: {
@@ -81,6 +98,8 @@ export async function submitOrder(
         price: order.price,
         eta_minutes: order.eta_minutes,
         lang: order.lang,
+        vehicle_doc: order.vehicle_doc ?? null,
+        vehicle_doc_url: order.vehicle_doc_url ?? null,
       },
       quote,
     },

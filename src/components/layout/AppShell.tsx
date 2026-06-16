@@ -76,9 +76,10 @@ export function AppShell({ children }: AppShellProps) {
           ) : null}
         </header>
 
-        {/* Main content */}
+        {/* Main content. min-h-0 lets inner scroll containers bound correctly
+            (without it a tall child can push past the fixed-height card). */}
         <main
-          className="flex-1 flex flex-col overflow-hidden"
+          className="flex-1 min-h-0 flex flex-col overflow-hidden"
           style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
           {children}

@@ -1,13 +1,23 @@
-// Tankhilfe24 intake agent — uses NVIDIA Nemotron omni to extract the required
-// case fields from a free-text (later: voice) conversation, asking follow-up
-// questions until everything needed is collected.
+// Tankhilfe24 intake agent — two NVIDIA models, split by input type:
+//   • TEXT turns → a fast text-only instruct model (llama-3.3-70b) extracts the
+//     case fields as JSON and writes the next question.
+//   • VOICE turns → the omni multimodal model transcribes the audio AND extracts
+//     in one call (NVIDIA does not expose a hosted REST Whisper endpoint we can
+//     call from here; a dedicated ASR provider is a future swap — see git).
+// Both paths share the same field set and system prompt; the voice prompt adds a
+// transcript instruction.
 //
-// Request body: { messages: {role:'user'|'assistant', content:string}[], lang?: 'de'|'en'|'pl' }
-// Response:     { fields, missing: string[], complete: boolean, reply: string }
+// Request body: { messages: {role:'user'|'assistant', content:string}[],
+//                 audio?: base64 WAV (16 kHz mono) for a voice turn,
+//                 lang?: 'de'|'en'|'pl' }
+// Response:     { fields, missing: string[], complete, reply, transcript, suggestions, asksLocation }
 
 const NVIDIA_API_KEY = Deno.env.get('NVIDIA_API_KEY')
 const NVIDIA_BASE = Deno.env.get('NVIDIA_BASE_URL') ?? 'https://integrate.api.nvidia.com/v1'
-const MODEL = Deno.env.get('NVIDIA_MODEL') ?? 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning'
+// Text extraction model (fast, no reasoning overhead).
+const MODEL = Deno.env.get('NVIDIA_MODEL') ?? 'meta/llama-3.3-70b-instruct'
+// Voice model: transcribes + extracts in one call.
+const OMNI_MODEL = Deno.env.get('NVIDIA_OMNI_MODEL') ?? 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning'
 
 const FIELDS = [
   'situation',
@@ -32,7 +42,7 @@ function json(body: unknown, status = 200): Response {
   })
 }
 
-function systemPrompt(lang: string): string {
+function systemPrompt(lang: string, isVoice: boolean): string {
   return `You are the intake assistant for "Tankhilfe24", a 24/7 roadside rescue service for misfuelling (putting the wrong fuel in a vehicle).
 Always write your "reply" in this language code: "${lang}".
 Be calm and reassuring — the customer is stranded and stressed.
@@ -41,10 +51,10 @@ KEEP EVERY REPLY VERY SHORT: one sentence, occasionally two, ideally under 20 wo
 
 Collect these required fields:
 - situation: which fuel was wrongly added (e.g. petrol in diesel, diesel in petrol, wrong AdBlue, other fuel)
-- engineStarted: did they start/drive after misfuelling? (not at all / started briefly / drove it / unsure)
+- engineStarted: did they start/drive after misfuelling? (not at all / started briefly / drove it / unsure). If they DID drive, also ask roughly how many kilometres they drove and include it here (e.g. "Bin gefahren, ca. 5 km") — distance affects how far the wrong fuel spread.
 - litres: BOTH how much WRONG fuel was added AND how full the tank was before — the mixing ratio decides how serious it is. The customer almost never knows exact litres, so gather it in TWO easy tap-steps: first ask the rough amount of wrong fuel (offer litre ranges), then ask how full the tank was beforehand (offer fullness options). Accept approximate ranges as answers. Keep this field null until BOTH the amount and the prior tank level are known, then store them together (e.g. "ca. 5–15 L Benzin, Tank vorher fast leer").
-- location: where they are now, precise enough to dispatch a recovery vehicle. It MUST contain at least a street name, OR a clearly identifiable approximate spot — a motorway/road with direction and the nearest exit/junction (Auffahrt/Ausfahrt), a named petrol station, a car park, or a well-known landmark. A bare city or town name alone is NOT enough; if that is all you have, keep this null and ask for a more precise location. GPS coordinates (e.g. "52.51630, 13.37770") count as a fully valid, precise location — accept them as-is.
-- vehicle: make, model and year
+- location: where they are now, precise enough to dispatch a recovery vehicle. It MUST contain at least a street name, OR a clearly identifiable approximate spot — a motorway/road with direction and the nearest exit/junction (Auffahrt/Ausfahrt), a named petrol station, a car park, or a well-known landmark. A bare city or town name alone is NOT enough; if that is all you have, keep this null and ask for a more precise location. A full postal address or a POSTAL CODE (PLZ) with street counts; encourage them to give the PLZ or full address. GPS coordinates (e.g. "52.51630, 13.37770") count as a fully valid, precise location — accept them as-is.
+- vehicle: make, model and year — and whether it is a Diesel or Benziner (petrol). Include the fuel type here when known (e.g. "BMW 320d, Diesel, 2017").
 - contactName: the customer's full name
 - contactPhone: a reachable phone number that is a VALID, COMPLETE format — it must have a sensible number of digits (roughly 7–15), may start with "+" and a country code, and contain only digits, spaces, "+", "-", "/", "(" and ")". If the number they give is too short, clearly incomplete, or obviously not a phone number, keep contactPhone null and ask them to re-check and give the full number.
 
@@ -69,12 +79,17 @@ Read the ENTIRE conversation EVERY turn and re-extract every field already provi
   • rough amount of wrong fuel → ["Unter 5 L","5–15 L","15–30 L","Über 30 L"]
   • how full the tank was before → ["Fast leer","Viertel voll","Halb voll","Fast voll"]
   • a yes/no safety or clarifying question → ["Ja","Nein","Nicht sicher"]
-  Return an empty array [] ONLY for genuinely free-text answers — the exact location/street address, the full name, the phone number, and the precise vehicle make/model/year — and for the final confirmation.
+  Return an empty array [] for genuinely free-text answers and the final confirmation. CRITICAL: when your reply asks for the NAME, PHONE NUMBER, VEHICLE, or LOCATION, "suggestions" MUST be [] — these have no canned answers, so NEVER offer "Ja"/"Nein"/"Nicht sicher" or any other chips for them. Do not phrase these as yes/no questions either; ask directly (e.g. "Wie ist Ihr Name und Ihre Telefonnummer?", not "Könnten Sie mir Ihren Namen nennen?").
 - "asksLocation": set to true ONLY on a turn where your reply asks the customer where they are / for their location (so the app can offer a "share my location" button). Otherwise false.
-- VOICE MESSAGES: when the latest user message contains audio, you MUST first transcribe it and put the clean, verbatim transcription (in the spoken language) into the "transcript" field — this is required, never leave it null for an audio turn. Then extract the fields from that transcription exactly as you would from typed text. For purely typed messages, set "transcript" to null.
+- "asksFreeText": set to true whenever your reply asks for the name, phone number, vehicle, or location — i.e. any answer the customer must type freely (suggestions is [] on these turns). Otherwise false.
+${
+  isVoice
+    ? `- VOICE MESSAGE: the latest user message is audio. You MUST first transcribe it and put the clean, verbatim transcription (in the spoken language) into the "transcript" field — this is required, never leave it null. Then extract the fields from that transcription exactly as you would from typed text.`
+    : `The user's messages are already plain text, so just read and extract from them as typed text.`
+}
 
 Output ONLY a single minified JSON object, no markdown, no commentary, no <think> tags:
-{"fields":{"situation":string|null,"engineStarted":string|null,"litres":string|null,"location":string|null,"vehicle":string|null,"contactName":string|null,"contactPhone":string|null},"missing":string[],"complete":boolean,"reply":string,"transcript":string|null,"suggestions":string[],"asksLocation":boolean}`
+{"fields":{"situation":string|null,"engineStarted":string|null,"litres":string|null,"location":string|null,"vehicle":string|null,"contactName":string|null,"contactPhone":string|null},"missing":string[],"complete":boolean,"reply":string,${isVoice ? '"transcript":string|null,' : ''}"suggestions":string[],"asksLocation":boolean,"asksFreeText":boolean}`
 }
 
 /** Pull a JSON object out of a possibly-reasoning model response. */
@@ -96,32 +111,46 @@ interface AgentResult {
   transcript: string | null
   suggestions: string[]
   asksLocation: boolean
+  asksFreeText: boolean
 }
 
-function normalize(parsed: Partial<AgentResult>): AgentResult {
+function normalize(parsed: Partial<AgentResult>, transcript: string | null): AgentResult {
   const fields: Record<string, string | null> = {}
   for (const f of FIELDS) {
     const v = parsed.fields?.[f]
     fields[f] = typeof v === 'string' && v.trim() !== '' ? v.trim() : null
   }
   const missing = FIELDS.filter((f) => fields[f] === null)
+  const asksFreeText = parsed.asksFreeText === true
   return {
     fields,
     missing,
     complete: missing.length === 0,
     reply: typeof parsed.reply === 'string' ? parsed.reply : '',
-    transcript:
-      typeof parsed.transcript === 'string' && parsed.transcript.trim() !== ''
-        ? parsed.transcript.trim()
-        : null,
-    suggestions: Array.isArray(parsed.suggestions)
-      ? parsed.suggestions
-          .filter((s): s is string => typeof s === 'string' && s.trim() !== '')
-          .map((s) => s.trim())
-          .slice(0, 4)
-      : [],
+    // Transcript comes from the ASR step (null for typed turns), not the model.
+    transcript: transcript && transcript.trim() !== '' ? transcript.trim() : null,
+    // Deterministic backstop: a free-text turn (name/phone/vehicle/location) can
+    // never have tappable answers, so drop any chips the model wrongly emitted
+    // (it sometimes offers Ja/Nein for a polite "Könnten Sie…?" name question).
+    suggestions: asksFreeText
+      ? []
+      : Array.isArray(parsed.suggestions)
+        ? parsed.suggestions
+            .filter((s): s is string => typeof s === 'string' && s.trim() !== '')
+            .map((s) => s.trim())
+            .slice(0, 4)
+        : [],
     asksLocation: parsed.asksLocation === true,
+    asksFreeText,
   }
+}
+
+// Localized "I didn't catch that" reply for when the voice model fails to
+// return usable output — keeps the intake flow alive instead of dead-ending.
+const ASR_FAIL_REPLY: Record<string, string> = {
+  de: 'Entschuldigung, ich konnte die Sprachnachricht nicht verstehen. Könnten Sie sie bitte noch einmal aufnehmen?',
+  en: "Sorry, I couldn't make out that voice message. Could you please record it again?",
+  pl: 'Przepraszam, nie zrozumiałem wiadomości głosowej. Czy możesz nagrać ją jeszcze raz?',
 }
 
 Deno.serve(async (req) => {
@@ -129,7 +158,7 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405)
   if (!NVIDIA_API_KEY) return json({ error: 'NVIDIA_API_KEY not configured' }, 500)
 
-  let payload: { messages?: { role: string; content: unknown }[]; lang?: string }
+  let payload: { messages?: { role: string; content: unknown }[]; audio?: unknown; lang?: string }
   try {
     payload = await req.json()
   } catch {
@@ -137,42 +166,37 @@ Deno.serve(async (req) => {
   }
 
   const lang = payload.lang ?? 'de'
-  // Content is a string for typed turns, or an OpenAI-style content array
-  // (text + audio_url part) for a voice turn — pass both through verbatim.
+  const isVoice = typeof payload.audio === 'string' && payload.audio.length > 0
   const history = (payload.messages ?? [])
-    .filter(
-      (m) =>
-        m &&
-        (m.role === 'user' || m.role === 'assistant') &&
-        (typeof m.content === 'string' || Array.isArray(m.content)),
-    )
-    .map((m) => ({ role: m.role, content: m.content }))
+    .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
+    .map((m) => ({ role: m.role, content: m.content as string }))
 
-  const chat = [{ role: 'system', content: systemPrompt(lang) }, ...history]
+  // Build the chat. For a voice turn, append the audio as an OpenAI-style
+  // audio_url content part so the omni model can transcribe + extract in one go.
+  const chat: { role: string; content: unknown }[] = [{ role: 'system', content: systemPrompt(lang, isVoice) }, ...history]
+  if (isVoice) {
+    chat.push({
+      role: 'user',
+      content: [
+        { type: 'text', text: 'Voice message from the customer — transcribe it into the JSON "transcript" field, then extract fields from it.' },
+        { type: 'audio_url', audio_url: { url: `data:audio/wav;base64,${payload.audio}` } },
+      ],
+    })
+  }
 
-  // One model round-trip: returns parsed JSON, or null if the response was
-  // empty / unparseable (the reasoning model occasionally ignores the
-  // no-thinking hint and burns the whole budget on hidden reasoning).
+  // One model round-trip. Voice uses the omni model (reasoning, needs a big
+  // token budget + reasoning_content fallback); text uses the fast instruct
+  // model with JSON mode.
   async function attempt(): Promise<{ parsed: Partial<AgentResult> | null; httpError: string | null }> {
+    const body = isVoice
+      ? { model: OMNI_MODEL, messages: chat, temperature: 0.2, top_p: 0.9, max_tokens: 6144, chat_template_kwargs: { thinking: false } }
+      : { model: MODEL, messages: chat, temperature: 0.2, top_p: 0.9, max_tokens: 1024, response_format: { type: 'json_object' } }
     let res: Response
     try {
       res = await fetch(`${NVIDIA_BASE}/chat/completions`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${NVIDIA_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: MODEL,
-          messages: chat,
-          temperature: 0.2,
-          top_p: 0.9,
-          // This reasoning model still spends ~1.5–2.2k tokens thinking even
-          // with thinking disabled; 2048 truncated it mid-reasoning and left
-          // `content` empty. A generous budget lets it finish and emit JSON.
-          max_tokens: 6144,
-          chat_template_kwargs: { thinking: false },
-        }),
+        headers: { Authorization: `Bearer ${NVIDIA_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
       })
     } catch (e) {
       return { parsed: null, httpError: `upstream fetch failed: ${e}` }
@@ -183,8 +207,7 @@ Deno.serve(async (req) => {
     }
     const data = await res.json()
     const msg = data.choices?.[0]?.message ?? {}
-    // Prefer the answer field; fall back to reasoning_content, whose tail still
-    // carries the final JSON if the model ignored the no-thinking hint.
+    // Omni may put the JSON in reasoning_content if it ignores the no-thinking hint.
     const content: string = (msg.content && msg.content.trim() !== '' ? msg.content : msg.reasoning_content) ?? ''
     try {
       return { parsed: JSON.parse(extractJson(content)), httpError: null }
@@ -193,8 +216,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Retry once on an empty/unparseable result — these are intermittent and a
-  // second roll almost always returns clean JSON.
+  // Retry once on an empty/unparseable result.
   let parsed: Partial<AgentResult> | null = null
   let lastHttpError: string | null = null
   for (let i = 0; i < 2 && !parsed; i++) {
@@ -203,8 +225,13 @@ Deno.serve(async (req) => {
     lastHttpError = r.httpError
   }
   if (!parsed) {
+    // For a voice turn, fail soft so the customer can just re-record.
+    if (isVoice) {
+      return json(normalize({ reply: ASR_FAIL_REPLY[lang] ?? ASR_FAIL_REPLY.de, suggestions: [], asksLocation: false }, null))
+    }
     return json({ error: lastHttpError ?? 'could not parse model output' }, 502)
   }
 
-  return json(normalize(parsed))
+  const transcript = isVoice && typeof parsed.transcript === 'string' ? parsed.transcript : null
+  return json(normalize(parsed, transcript))
 })

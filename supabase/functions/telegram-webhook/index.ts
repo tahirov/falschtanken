@@ -69,29 +69,45 @@ Deno.serve(async (req) => {
       const stamp = action === 'accept' ? '✅ ANGENOMMEN' : '❌ ABGELEHNT'
       const by = cq.from?.first_name ? ` · ${cq.from.first_name}` : ''
       await tg('answerCallbackQuery', { callback_query_id: cq.id, text: stamp })
+
+      // Fetch order details for the contact card + the quick-link buttons.
+      const { data: ord } = await supabase
+        .from('orders')
+        .select('contact_name, contact_phone, location, vehicle_doc_url')
+        .eq('id', id)
+        .maybeSingle()
+
       if (cq.message) {
-        // Re-stamp the message and drop the buttons so it can't be re-actioned.
+        // On accept: re-stamp and keep the map/Fahrzeugschein quick links, but
+        // drop Accept/Ablehnen so the job can't be re-actioned. On decline: drop
+        // all buttons. (Telegram removes the keyboard unless reply_markup is set.)
+        let reply_markup: unknown
+        if (action === 'accept' && ord) {
+          const links: { text: string; url: string }[] = []
+          if (ord.location) {
+            links.push({
+              text: '🗺 Karte öffnen',
+              url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ord.location)}`,
+            })
+          }
+          if (ord.vehicle_doc_url) links.push({ text: '📄 Fahrzeugschein', url: ord.vehicle_doc_url })
+          if (links.length) reply_markup = { inline_keyboard: [links] }
+        }
         await tg('editMessageText', {
           chat_id: cq.message.chat.id,
           message_id: cq.message.message_id,
           text: `${cq.message.text ?? ''}\n\n${stamp}${by}`,
+          ...(reply_markup ? { reply_markup } : {}),
         })
       }
       // On accept, send the customer as a tappable contact card so the
-      // technician can call with one tap — works even after the buttons go.
-      if (action === 'accept' && chatId) {
-        const { data: ord } = await supabase
-          .from('orders')
-          .select('contact_name, contact_phone')
-          .eq('id', id)
-          .maybeSingle()
-        if (ord?.contact_phone) {
-          await tg('sendContact', {
-            chat_id: chatId,
-            phone_number: ord.contact_phone,
-            first_name: ord.contact_name || 'Kunde',
-          })
-        }
+      // technician can CALL with one tap (Telegram's native Call button).
+      if (action === 'accept' && chatId && ord?.contact_phone) {
+        await tg('sendContact', {
+          chat_id: chatId,
+          phone_number: ord.contact_phone,
+          first_name: ord.contact_name || 'Kunde',
+        })
       }
     } else {
       await tg('answerCallbackQuery', { callback_query_id: cq.id })

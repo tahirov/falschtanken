@@ -11,7 +11,8 @@ import {
 import { useAppStore } from '@/store/useAppStore'
 import { translations } from '@/lib/i18n'
 import { calculateSeverity, calculatePrice, generateEta } from '@/lib/pricingLogic'
-import { createOrder } from '@/lib/orders'
+import { submitOrder } from '@/lib/orders'
+import { saveDispatch } from '@/lib/dispatchSession'
 
 export function OfferScreen() {
   const navigate = useNavigate()
@@ -43,9 +44,10 @@ export function OfferScreen() {
   async function handleRequest() {
     if (submitting || !contactComplete) return
     setSubmitting(true)
-    // Persist the case as an order (the admin log entry). Don't block the
+    // Submit via the edge function so the operator is notified on Telegram (with
+    // a fallback insert inside submitOrder if it's unreachable). Don't block the
     // customer funnel on a backend hiccup — proceed to dispatch either way.
-    await createOrder({
+    const { id } = await submitOrder({
       situation: store.situation,
       engine_started: store.engineStarted,
       litres: store.litres,
@@ -57,7 +59,11 @@ export function OfferScreen() {
       price,
       eta_minutes: eta,
       lang,
+      vehicle_doc: store.vehicleDoc,
+      vehicle_doc_url: store.vehicleDocUrl,
     })
+    store.setOrderId(id)
+    if (id) saveDispatch({ orderId: id, price, eta })
     navigate('/dispatch')
   }
 
@@ -78,7 +84,8 @@ export function OfferScreen() {
   }[severity]
 
   return (
-    <div className="flex flex-col flex-1 overflow-y-auto px-4 py-4 gap-4">
+    <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 flex flex-col gap-4">
 
       {/* Summary card */}
       <Card>
@@ -138,25 +145,8 @@ export function OfferScreen() {
         </CardContent>
       </Card>
 
-      {/* Payment methods */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm text-muted-foreground">{t.offer.paymentTitle}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 pt-0">
-          {t.offer.paymentMethods.map((method, i) => {
-            const Icon = paymentIcons[i]
-            return (
-              <div key={method} className="flex items-center gap-3">
-                <Icon className="size-4 text-muted-foreground shrink-0" />
-                <span className="text-sm">{method}</span>
-              </div>
-            )
-          })}
-        </CardContent>
-      </Card>
-
-      {/* Contact details */}
+      {/* Contact details — placed above payment so both fields sit close to the
+          action and are reached first when scrolling. */}
       <Card>
         <CardHeader>
           <CardTitle className="text-sm text-muted-foreground">{t.offer.contactTitle}</CardTitle>
@@ -192,8 +182,29 @@ export function OfferScreen() {
         </CardContent>
       </Card>
 
-      {/* CTA */}
-      <div className="space-y-2 pb-2">
+      {/* Payment methods (informational — kept below the contact fields) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm text-muted-foreground">{t.offer.paymentTitle}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 pt-0">
+          {t.offer.paymentMethods.map((method, i) => {
+            const Icon = paymentIcons[i]
+            return (
+              <div key={method} className="flex items-center gap-3">
+                <Icon className="size-4 text-muted-foreground shrink-0" />
+                <span className="text-sm">{method}</span>
+              </div>
+            )
+          })}
+        </CardContent>
+      </Card>
+
+      </div>
+
+      {/* Fixed footer: the action stays visible while the cards scroll above it,
+          so both contact fields are always reachable just above the button. */}
+      <div className="border-t bg-background px-4 py-3 space-y-2">
         <Button
           className="w-full"
           size="lg"
@@ -209,7 +220,7 @@ export function OfferScreen() {
         >
           {t.offer.back}
         </Button>
-        <p className="text-center text-xs text-muted-foreground pt-1">{t.offer.disclaimer}</p>
+        <p className="text-center text-xs text-muted-foreground">{t.offer.disclaimer}</p>
       </div>
     </div>
   )

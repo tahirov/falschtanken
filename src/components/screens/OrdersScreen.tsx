@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import {
   RefreshCw, MapPin, Car, Clock, Inbox, Loader2, ChevronDown, Check,
-  Search, User, Phone, ArrowUpDown, ListFilter, X,
+  Search, User, Phone, ArrowUpDown, ListFilter, X, FileText, ExternalLink,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAppStore } from '@/store/useAppStore'
@@ -273,6 +273,36 @@ export function OrdersScreen() {
                     </a>
                   )}
                 </div>
+
+                {(order.vehicle_doc || order.vehicle_doc_url) && (
+                  <div className="mt-2 rounded-lg border bg-muted/40 p-2">
+                    <p className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                      <FileText className="size-3 shrink-0" />
+                      Fahrzeugschein
+                    </p>
+                    {order.vehicle_doc && (
+                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-foreground/80">
+                        {order.vehicle_doc.kennzeichen && <span>Kennz.: {order.vehicle_doc.kennzeichen}</span>}
+                        {order.vehicle_doc.marke && <span>{order.vehicle_doc.marke} {order.vehicle_doc.modell ?? ''}</span>}
+                        {order.vehicle_doc.kraftstoff && <span>{order.vehicle_doc.kraftstoff}</span>}
+                        {order.vehicle_doc.erstzulassung && <span>EZ {order.vehicle_doc.erstzulassung}</span>}
+                        {order.vehicle_doc.leistung_kw && <span>{order.vehicle_doc.leistung_kw} kW</span>}
+                        {order.vehicle_doc.fin && <span>FIN {order.vehicle_doc.fin}</span>}
+                      </div>
+                    )}
+                    {order.vehicle_doc_url && (
+                      <a
+                        href={order.vehicle_doc_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-1 inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+                      >
+                        <ExternalLink className="size-3 shrink-0" />
+                        Foto öffnen
+                      </a>
+                    )}
+                  </div>
+                )}
 
                 <div className="mt-2.5 flex items-center justify-between gap-2">
                   <DropdownMenu>

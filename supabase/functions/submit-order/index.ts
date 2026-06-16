@@ -48,6 +48,15 @@ interface Quote {
   total: number
   eta: number
 }
+interface VehicleDoc {
+  kennzeichen?: string | null
+  marke?: string | null
+  modell?: string | null
+  erstzulassung?: string | null
+  kraftstoff?: string | null
+  leistung_kw?: string | null
+  fin?: string | null
+}
 interface OrderInput {
   situation?: string
   engine_started?: string
@@ -60,6 +69,8 @@ interface OrderInput {
   price?: number
   eta_minutes?: number
   lang?: string
+  vehicle_doc?: VehicleDoc | null
+  vehicle_doc_url?: string | null
 }
 
 function buildText(o: OrderInput, q: Quote | undefined): string {
@@ -76,6 +87,17 @@ function buildText(o: OrderInput, q: Quote | undefined): string {
     `👤 Kunde: ${o.contact_name ?? '—'}`,
     `📞 Telefon: ${o.contact_phone ?? '—'}`,
   ]
+  const d = o.vehicle_doc
+  if (d && (d.kennzeichen || d.marke || d.fin || d.kraftstoff)) {
+    const docBits = [
+      d.kennzeichen && `Kennz. ${d.kennzeichen}`,
+      d.kraftstoff,
+      d.erstzulassung && `EZ ${d.erstzulassung}`,
+      d.leistung_kw && `${d.leistung_kw} kW`,
+      d.fin && `FIN ${d.fin}`,
+    ].filter(Boolean)
+    if (docBits.length) lines.push(`📄 Fahrzeugschein: ${docBits.join(' · ')}`)
+  }
   if (q?.lines?.length) {
     lines.push('', '💶 Kostenübersicht')
     for (const l of q.lines) {
@@ -103,9 +125,11 @@ function buildKeyboard(id: string, o: OrderInput) {
       url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.location)}`,
     })
   }
-  const digits = (o.contact_phone ?? '').replace(/[^\d]/g, '')
-  if (digits.length >= 10 && !digits.startsWith('0')) {
-    links.push({ text: '💬 WhatsApp', url: `https://wa.me/${digits}` })
+  // No WhatsApp/call button here: Telegram inline buttons can't carry a tel:
+  // link, and on accept we send the customer as a tappable contact card (with a
+  // native Call button), so calling is handled there.
+  if (o.vehicle_doc_url) {
+    links.push({ text: '📄 Fahrzeugschein', url: o.vehicle_doc_url })
   }
   if (links.length) rows.push(links)
   return { inline_keyboard: rows }

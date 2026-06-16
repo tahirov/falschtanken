@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { Lang } from '@/lib/i18n'
+import type { VehicleDoc } from '@/lib/orders'
 
 export interface CaseState {
   situation: string
@@ -15,6 +16,10 @@ export interface CaseState {
   orderId: string | null
   /** Base64 WAV recorded on the landing page, to be processed by the chat. */
   seedAudio: string | null
+  /** Necessary fields scanned off the Fahrzeugschein photo (null until scanned). */
+  vehicleDoc: VehicleDoc | null
+  /** Public URL of the uploaded Fahrzeugschein photo (the reference). */
+  vehicleDocUrl: string | null
   // intake step management
   currentStep: number
   // language
@@ -34,6 +39,8 @@ interface AppActions {
   setPrice: (v: number) => void
   setOrderId: (v: string | null) => void
   setSeedAudio: (v: string | null) => void
+  setVehicleDoc: (v: VehicleDoc | null) => void
+  setVehicleDocUrl: (v: string | null) => void
   setCurrentStep: (v: number) => void
   setLang: (v: Lang) => void
   resetCase: () => void
@@ -52,6 +59,8 @@ const initialState: CaseState = {
   price: 150,
   orderId: null,
   seedAudio: null,
+  vehicleDoc: null,
+  vehicleDocUrl: null,
   currentStep: 0,
   lang: 'de',
 }
@@ -70,6 +79,8 @@ export const useAppStore = create<CaseState & AppActions>((set) => ({
   setPrice: (v) => set({ price: v }),
   setOrderId: (v) => set({ orderId: v }),
   setSeedAudio: (v) => set({ seedAudio: v }),
+  setVehicleDoc: (v) => set({ vehicleDoc: v }),
+  setVehicleDocUrl: (v) => set({ vehicleDocUrl: v }),
   setCurrentStep: (v) => set({ currentStep: v }),
   setLang: (v) => set({ lang: v }),
   resetCase: () => set(initialState),

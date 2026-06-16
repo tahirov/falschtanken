@@ -9,6 +9,7 @@ import { translations } from '@/lib/i18n'
 import { WavRecorder } from '@/lib/audioRecorder'
 import { clearChat } from '@/lib/chatSession'
 import { clearDispatch } from '@/lib/dispatchSession'
+import { IntakeTabs } from '@/components/IntakeTabs'
 
 const MAX_REC_SECONDS = 60
 const BAR_COUNT = 56
@@ -166,6 +167,7 @@ export function LandingScreen() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-muted">
+      <IntakeTabs />
       <div className="flex-1 overflow-y-auto">
       {/* Hero */}
       <div className="px-6 pt-6 pb-6 sm:pt-16 sm:pb-8 text-center">

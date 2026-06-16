@@ -89,16 +89,14 @@ export function DispatchScreen() {
     }])
   }
 
-  // Phase transitions
+  // Phase transitions. We ONLY move to "connected" when the operator actually
+  // accepts the job in Telegram (polled below) — never on a timer. Faking an
+  // acceptance would also mean the customer's chat messages go nowhere.
   useEffect(() => {
-    // Manual/offer flow without a tracked order: keep the timed demo sequence.
-    if (!orderId) {
-      const t1 = setTimeout(() => setPhase('notifying'), 1500)
-      const t2 = setTimeout(() => connect(), 4000)
-      return () => { clearTimeout(t1); clearTimeout(t2) }
-    }
-    // AI flow: poll until the operator accepts/declines the job in Telegram.
-    setPhase('notifying')
+    const toNotifying = setTimeout(() => setPhase('notifying'), 1200)
+    // Without a tracked order id we cannot poll; stay in "notifying" rather than
+    // fabricate an acceptance.
+    if (!orderId) return () => clearTimeout(toNotifying)
     let active = true
     let timer: ReturnType<typeof setTimeout>
     const poll = async () => {
@@ -109,9 +107,19 @@ export function DispatchScreen() {
       timer = setTimeout(poll, 3000)
     }
     poll()
-    return () => { active = false; clearTimeout(timer) }
+    return () => { active = false; clearTimeout(toNotifying); clearTimeout(timer) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId, eta])
+
+  // Cycle the notifying status line so the wait feels alive.
+  const [notifyStep, setNotifyStep] = useState(0)
+  useEffect(() => {
+    if (phase !== 'notifying') return
+    const steps = t.dispatch.notifyingSteps
+    const iv = setInterval(() => setNotifyStep((s) => (s + 1) % steps.length), 1600)
+    return () => clearInterval(iv)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase])
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -188,8 +196,8 @@ export function DispatchScreen() {
               {phase === 'pending' ? t.dispatch.transmitting : t.dispatch.notifying}
             </p>
             {phase === 'notifying' && (
-              <p className="text-sm text-muted-foreground">
-                {orderId ? t.dispatch.waiting : 'via WhatsApp'}
+              <p className="text-sm shimmer-text font-medium">
+                {t.dispatch.notifyingSteps[notifyStep]}
               </p>
             )}
           </div>
