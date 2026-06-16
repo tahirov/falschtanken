@@ -268,7 +268,7 @@ export function LandingScreen() {
       </div>
 
       {/* Availability banner */}
-      <div className="mt-auto mx-6 mb-6 rounded-xl bg-muted px-4 py-3 text-center">
+      <div className="mt-8 mx-6 mb-6 rounded-xl bg-muted px-4 py-3 text-center">
         <p className="text-xs text-muted-foreground">{t.availability}</p>
       </div>
     </div>
