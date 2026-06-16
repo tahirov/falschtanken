@@ -159,11 +159,13 @@ export function LandingScreen() {
   return (
     <div className="flex flex-col flex-1 overflow-y-auto">
       {/* Hero */}
-      <div className="px-6 pt-14 pb-8 text-center">
-        <h1 className="font-heading text-3xl sm:text-4xl font-bold leading-[1.1] tracking-tight text-balance">
+      <div className="px-6 pt-16 pb-8 text-center">
+        <h1 className="font-heading text-4xl font-bold leading-[1.05] tracking-tight text-balance">
           {t.heroTitle}
         </h1>
-        <p className="text-muted-foreground text-base mt-4 max-w-sm mx-auto">{t.heroSubtitle}</p>
+        <p className="text-muted-foreground text-base mt-4 max-w-xs mx-auto text-balance">
+          {t.heroSubtitle}
+        </p>
       </div>
 
       {/* Prompt box */}
