@@ -6,7 +6,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Car, Send, Clock, Loader2, Mic, Square } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAppStore } from '@/store/useAppStore'
-import { translations } from '@/lib/i18n'
+import { translations, type Lang } from '@/lib/i18n'
+import { loadChat, saveChat, clearChat } from '@/lib/chatSession'
 import {
   runIntakeAgent,
   runIntakeAgentVoice,
@@ -44,6 +45,24 @@ export function AiIntakeScreen() {
   useEffect(() => {
     if (seeded.current) return
     seeded.current = true
+    // Restore a persisted conversation (e.g. after a refresh) before seeding.
+    const snap = loadChat()
+    if (snap) {
+      store.setLang(snap.lang as Lang)
+      store.setSituation(snap.fields.situation)
+      store.setEngineStarted(snap.fields.engineStarted)
+      store.setLitres(snap.fields.litres)
+      store.setLocation(snap.fields.location)
+      store.setVehicle(snap.fields.vehicle)
+      store.setContactName(snap.fields.contactName)
+      store.setContactPhone(snap.fields.contactPhone)
+      store.setEta(snap.eta)
+      store.setPrice(snap.price)
+      setMessages(snap.messages)
+      setSuggestions(snap.suggestions)
+      setQuote(snap.quote)
+      return
+    }
     if (store.seedAudio) {
       const audio = store.seedAudio
       store.setSeedAudio(null)
@@ -53,6 +72,29 @@ export function AiIntakeScreen() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Persist the conversation so a refresh restores it.
+  useEffect(() => {
+    if (messages.length === 0) return
+    saveChat({
+      lang,
+      messages,
+      suggestions,
+      quote,
+      eta: store.eta,
+      price: store.price,
+      fields: {
+        situation: store.situation,
+        engineStarted: store.engineStarted,
+        litres: store.litres,
+        location: store.location,
+        vehicle: store.vehicle,
+        contactName: store.contactName,
+        contactPhone: store.contactPhone,
+      },
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, suggestions, quote, lang])
 
   function applyFields(f: AgentFields) {
     if (f.situation) store.setSituation(f.situation)
@@ -171,6 +213,7 @@ export function AiIntakeScreen() {
       quote,
     )
     store.setOrderId(id)
+    clearChat() // case submitted — don't restore/re-submit it later
     navigate('/dispatch')
   }
 

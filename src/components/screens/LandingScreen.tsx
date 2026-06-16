@@ -7,6 +7,7 @@ import { Mic, ArrowUp, X, Check } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { translations } from '@/lib/i18n'
 import { WavRecorder } from '@/lib/audioRecorder'
+import { clearChat } from '@/lib/chatSession'
 
 const MAX_REC_SECONDS = 60
 const BAR_COUNT = 56
@@ -92,6 +93,7 @@ export function LandingScreen() {
   // Every entry point leads into the same conversational AI intake; we just
   // pre-seed it with whatever the customer typed or the situation they picked.
   function start(seed: string) {
+    clearChat() // begin a fresh conversation
     setOrderId(null)
     setSituation(seed)
     navigate('/chat')
@@ -123,6 +125,7 @@ export function LandingScreen() {
     recorderRef.current = null
     setRecording(false)
     const wav = await rec.stop()
+    clearChat() // begin a fresh conversation
     setOrderId(null)
     setSituation('')
     setSeedAudio(wav)
