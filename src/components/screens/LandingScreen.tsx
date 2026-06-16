@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -24,18 +24,48 @@ export function LandingScreen() {
   const t = translations[lang]
 
   const [text, setText] = useState('')
-  const [phIndex, setPhIndex] = useState(0)
+  const [typed, setTyped] = useState('')
+  const [cursorOn, setCursorOn] = useState(true)
   const placeholders = t.promptPlaceholders
 
-  // Cycle the example placeholder while the box is empty.
-  const emptyRef = useRef(true)
-  emptyRef.current = text.trim() === ''
+  // Typewriter placeholder: type a phrase in, hold, delete it, move to the next.
   useEffect(() => {
-    const id = setInterval(() => {
-      if (emptyRef.current) setPhIndex((i) => (i + 1) % placeholders.length)
-    }, 3200)
+    let phrase = 0
+    let char = 0
+    let deleting = false
+    let timer: ReturnType<typeof setTimeout>
+    const tick = () => {
+      const full = placeholders[phrase]
+      if (!deleting) {
+        char++
+        setTyped(full.slice(0, char))
+        if (char >= full.length) {
+          deleting = true
+          timer = setTimeout(tick, 1500) // hold the finished phrase
+          return
+        }
+        timer = setTimeout(tick, 55)
+      } else {
+        char--
+        setTyped(full.slice(0, char))
+        if (char <= 0) {
+          deleting = false
+          phrase = (phrase + 1) % placeholders.length
+          timer = setTimeout(tick, 350)
+          return
+        }
+        timer = setTimeout(tick, 28)
+      }
+    }
+    timer = setTimeout(tick, 500)
+    return () => clearTimeout(timer)
+  }, [placeholders])
+
+  // Blinking caret appended to the typed placeholder.
+  useEffect(() => {
+    const id = setInterval(() => setCursorOn((c) => !c), 530)
     return () => clearInterval(id)
-  }, [placeholders.length])
+  }, [])
 
   // Every entry point leads into the same conversational AI intake; we just
   // pre-seed it with whatever the customer typed or the situation they picked.
@@ -74,13 +104,13 @@ export function LandingScreen() {
 
       {/* Prompt box */}
       <div className="px-5">
-        <div className="rounded-2xl border bg-card shadow-sm p-3 focus-within:ring-2 focus-within:ring-primary/40 transition">
+        <div className="rounded-2xl border bg-card shadow-sm p-2 focus-within:ring-2 focus-within:ring-primary/40 transition">
           <Textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder={placeholders[phIndex]}
+            placeholder={`${typed}${cursorOn ? '▍' : ' '}`}
             rows={3}
-            className="border-0 shadow-none focus-visible:ring-0 resize-none p-0 text-base min-h-[64px]"
+            className="border-0 shadow-none focus-visible:ring-0 resize-none px-3 py-2.5 text-base min-h-[72px]"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
@@ -88,7 +118,7 @@ export function LandingScreen() {
               }
             }}
           />
-          <div className="flex items-center justify-end gap-2 pt-1">
+          <div className="flex items-center justify-end gap-2 px-1 pb-1">
             <Button
               variant="ghost"
               size="icon"
