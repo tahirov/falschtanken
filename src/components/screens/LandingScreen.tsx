@@ -165,7 +165,7 @@ export function LandingScreen() {
   }, [recSec, recording])
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className="flex flex-col flex-1 min-h-0 bg-muted">
       <div className="flex-1 overflow-y-auto">
       {/* Hero */}
       <div className="px-6 pt-6 pb-6 sm:pt-16 sm:pb-8 text-center">
@@ -179,7 +179,7 @@ export function LandingScreen() {
 
       {/* Prompt box */}
       <div className="px-5">
-        <div className="rounded-2xl border bg-card shadow-sm p-2 focus-within:ring-2 focus-within:ring-primary/40 transition">
+        <div className="rounded-2xl border border-black/5 bg-card p-2 shadow-[0_6px_24px_-8px_rgba(0,0,0,0.15)] focus-within:ring-2 focus-within:ring-primary/30 transition">
           {recording ? (
             <div className="flex items-center gap-2 px-3 min-h-[72px]">
               <span className="size-2.5 rounded-full bg-red-500 animate-pulse shrink-0" />
@@ -203,7 +203,7 @@ export function LandingScreen() {
             onChange={(e) => setText(e.target.value)}
             placeholder={`${typed}${cursorOn ? '▍' : ' '}`}
             rows={3}
-            className="border-0 shadow-none focus-visible:ring-0 resize-none px-3 py-2.5 text-base min-h-[72px]"
+            className="border-0 bg-transparent shadow-none focus-visible:ring-0 resize-none px-3 py-2.5 text-base min-h-[72px]"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
