@@ -11,16 +11,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { CheckCircle2, XCircle, Phone, Send, Star, Loader2 } from 'lucide-react'
+import { CheckCircle2, XCircle, Phone, Send, Star, Loader2, CheckCheck } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { translations } from '@/lib/i18n'
-import { technician, mockReplies } from '@/lib/mockData'
-import { getOrderStatus } from '@/lib/orders'
+import { technician } from '@/lib/mockData'
+import { getOrderStatus, sendDispatchMessage } from '@/lib/orders'
 import { loadDispatch, saveDispatch, clearDispatch } from '@/lib/dispatchSession'
 
 interface Message {
   id: number
-  from: 'tech' | 'user'
+  from: 'tech' | 'user' | 'system'
   text: string
 }
 
@@ -130,17 +130,24 @@ export function DispatchScreen() {
     : Math.max(1, eta) * 60
   const countdown = `${Math.floor(remainingSec / 60)}:${String(remainingSec % 60).padStart(2, '0')}`
 
-  function sendMessage() {
-    if (!inputText.trim()) return
+  async function sendMessage() {
+    const text = inputText.trim()
+    if (!text) return
     msgIdRef.current += 1
-    const userMsg: Message = { id: msgIdRef.current, from: 'user', text: inputText.trim() }
+    const userMsg: Message = { id: msgIdRef.current, from: 'user', text }
     setMessages((prev) => [...prev, userMsg])
     setInputText('')
+
+    // Forward to Ihsan's Telegram (one-way), then reassure: delivered → seen.
+    if (orderId) await sendDispatchMessage(orderId, text)
+    msgIdRef.current += 1
+    const noteId = msgIdRef.current
+    setMessages((prev) => [...prev, { id: noteId, from: 'system', text: t.dispatch.delivered }])
     setTimeout(() => {
-      const reply = mockReplies[Math.floor(Math.random() * mockReplies.length)]
-      msgIdRef.current += 1
-      setMessages((prev) => [...prev, { id: msgIdRef.current, from: 'tech', text: reply }])
-    }, 2000)
+      setMessages((prev) =>
+        prev.map((m) => (m.id === noteId ? { ...m, text: t.dispatch.seen } : m)),
+      )
+    }, 1400)
   }
 
   function handleCancel() {
@@ -236,29 +243,38 @@ export function DispatchScreen() {
 
       {/* Chat thread */}
       <div className="flex-1 overflow-y-auto px-4 space-y-3 py-2">
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex ${msg.from === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            {msg.from === 'tech' && (
-              <img
-                src={technician.photo}
-                alt={technician.name}
-                className="size-7 rounded-full object-cover shrink-0 mr-2 mt-0.5"
-              />
-            )}
-            <div
-              className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
-                msg.from === 'user'
-                  ? 'bg-primary text-primary-foreground rounded-br-sm'
-                  : 'bg-muted text-foreground rounded-bl-sm'
-              }`}
-            >
-              {msg.text}
+        {messages.map((msg) =>
+          msg.from === 'system' ? (
+            <div key={msg.id} className="flex justify-center px-4">
+              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                <CheckCheck className="size-3.5 text-green-600" />
+                {msg.text}
+              </span>
             </div>
-          </div>
-        ))}
+          ) : (
+            <div
+              key={msg.id}
+              className={`flex ${msg.from === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              {msg.from === 'tech' && (
+                <img
+                  src={technician.photo}
+                  alt={technician.name}
+                  className="size-7 rounded-full object-cover shrink-0 mr-2 mt-0.5"
+                />
+              )}
+              <div
+                className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                  msg.from === 'user'
+                    ? 'bg-primary text-primary-foreground rounded-br-sm'
+                    : 'bg-muted text-foreground rounded-bl-sm'
+                }`}
+              >
+                {msg.text}
+              </div>
+            </div>
+          ),
+        )}
         <div ref={chatEndRef} />
       </div>
 

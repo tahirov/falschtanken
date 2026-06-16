@@ -62,7 +62,9 @@ Deno.serve(async (req) => {
     const [action, id] = String(cq.data).split(':')
     if ((action === 'accept' || action === 'decline') && id) {
       const status = action === 'accept' ? 'dispatched' : 'cancelled'
-      await supabase.from('orders').update({ status }).eq('id', id)
+      const patch: Record<string, unknown> = { status }
+      if (action === 'accept') patch.accepted_chat_id = String(cq.message?.chat?.id ?? '')
+      await supabase.from('orders').update(patch).eq('id', id)
       const stamp = action === 'accept' ? '✅ ANGENOMMEN' : '❌ ABGELEHNT'
       const by = cq.from?.first_name ? ` · ${cq.from.first_name}` : ''
       await tg('answerCallbackQuery', { callback_query_id: cq.id, text: stamp })

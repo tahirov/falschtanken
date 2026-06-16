@@ -92,6 +92,14 @@ export async function submitOrder(
   return { error: null, id: (data?.id as string) ?? null }
 }
 
+/** Forward a customer's dispatch-chat message to the assigned technician. */
+export async function sendDispatchMessage(orderId: string, text: string): Promise<boolean> {
+  const { data, error } = await supabase.functions.invoke('dispatch-message', {
+    body: { orderId, text },
+  })
+  return !error && !!data?.ok
+}
+
 /** Poll a single order's status (operator Accept/Decline arrives via Telegram). */
 export async function getOrderStatus(id: string): Promise<OrderStatus | null> {
   const { data, error } = await supabase.functions.invoke('order-status', { body: { id } })
