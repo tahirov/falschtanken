@@ -157,7 +157,8 @@ export function LandingScreen() {
   }, [recSec, recording])
 
   return (
-    <div className="flex flex-col flex-1 overflow-y-auto">
+    <div className="flex flex-col flex-1 min-h-0">
+      <div className="flex-1 overflow-y-auto">
       {/* Hero */}
       <div className="px-6 pt-16 pb-8 text-center">
         <h1 className="font-heading text-2xl sm:text-4xl font-bold leading-[1.1] sm:leading-[1.05] tracking-tight text-balance">
@@ -267,9 +268,11 @@ export function LandingScreen() {
         </div>
       </div>
 
-      {/* Availability banner */}
-      <div className="mt-8 mx-6 mb-6 rounded-xl bg-muted px-4 py-3 text-center">
-        <p className="text-xs text-muted-foreground">{t.availability}</p>
+      </div>
+
+      {/* Availability footer — compact, one line, pinned to the bottom */}
+      <div className="shrink-0 border-t px-4 py-2 text-center">
+        <p className="text-[11px] text-muted-foreground truncate">{t.availability}</p>
       </div>
     </div>
   )
