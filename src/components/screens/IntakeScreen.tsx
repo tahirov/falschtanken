@@ -131,6 +131,10 @@ export function IntakeScreen() {
       case 'fuel':
         if (answer !== tk.fuelChips[2]) store.setVehicle(`${store.vehicle}, ${answer}`)
         break
+      case 'vehicleMore':
+        // Append the completing details (model/year) to what was typed.
+        store.setVehicle(`${store.vehicle} ${answer}`.trim())
+        break
       case 'location':
         store.setLocation(answer)
         break
@@ -178,14 +182,28 @@ export function IntakeScreen() {
   }
 
   function onText() {
-    if (!textInput.trim()) return
-    advance(textInput.trim())
+    const v = textInput.trim()
+    if (!v) return
+    // After completing the vehicle details, move on to the fuel question.
+    if (step.key === 'vehicleMore') {
+      advance(v, undefined, fuelStep())
+      return
+    }
+    advance(v)
   }
 
   function onVehicleNext() {
-    if (!vehicleText.trim()) return
-    // Typed the vehicle → still need to ask Diesel/Benziner next.
-    advance(vehicleText.trim(), undefined, fuelStep())
+    const v = vehicleText.trim()
+    if (!v) return
+    // If Marke/Modell/Baujahr looks incomplete, ask a follow-up to complete it
+    // before the fuel question; otherwise go straight to fuel.
+    const missing = missingVehicleParts(v)
+    if (missing.length) {
+      const parts = missing.map((m) => tk.vehicleParts[m]).join(', ')
+      advance(v, undefined, { key: 'vehicleMore', kind: 'chips', chips: [], question: tk.vehicleMissing(parts) })
+    } else {
+      advance(v, undefined, fuelStep())
+    }
   }
 
   function shareLocation() {
