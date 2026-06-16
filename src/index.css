@@ -147,12 +147,12 @@
 }
 
 .gradient-headline {
-  background-image: linear-gradient(90deg, #6d28d9, #9f1239, #6d28d9);
-  background-size: 200% auto;
+  background-image: linear-gradient(90deg, #6d28d9, #d946ef, #9f1239, #d946ef, #6d28d9);
+  background-size: 250% auto;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  animation: headline-gradient 7s ease-in-out infinite;
+  animation: headline-gradient 6s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
