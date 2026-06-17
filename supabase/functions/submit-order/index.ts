@@ -120,6 +120,27 @@ function waNumber(phone?: string): string | null {
 
 type Btn = { text: string; callback_data?: string; url?: string }
 
+// Customer-facing order summary (in the customer's language) the technician can
+// send via WhatsApp with one tap. Prefilled text only — WhatsApp deep links
+// can't attach files.
+function customerSummary(o: OrderInput, total: number, eta: number): string {
+  const lang = o.lang === 'en' ? 'en' : o.lang === 'pl' ? 'pl' : 'de'
+  const T = {
+    de: { title: 'Tankhilfe24 – Ihr Auftrag', sit: 'Situation', veh: 'Fahrzeug', loc: 'Standort', eta: `Techniker Ihsan ist unterwegs – Ankunft in ca. ${eta} Min.`, price: 'Festpreis', foot: 'Bei Fragen einfach hier antworten.' },
+    en: { title: 'Tankhilfe24 – Your job', sit: 'Situation', veh: 'Vehicle', loc: 'Location', eta: `Technician Ihsan is on the way – arriving in approx. ${eta} min.`, price: 'Fixed price', foot: 'Any questions, just reply here.' },
+    pl: { title: 'Tankhilfe24 – Twoje zlecenie', sit: 'Sytuacja', veh: 'Pojazd', loc: 'Lokalizacja', eta: `Technik Ihsan jest w drodze – przyjazd za ok. ${eta} min.`, price: 'Cena stała', foot: 'W razie pytań po prostu odpowiedz tutaj.' },
+  }[lang]
+  return [
+    T.title,
+    o.situation ? `${T.sit}: ${o.situation}` : '',
+    o.vehicle ? `${T.veh}: ${o.vehicle}` : '',
+    o.location ? `${T.loc}: ${o.location}` : '',
+    T.eta,
+    `${T.price}: €${total}`,
+    T.foot,
+  ].filter(Boolean).join('\n')
+}
+
 function buildKeyboard(id: string, o: OrderInput) {
   const rows: Btn[][] = [
     [
@@ -135,6 +156,11 @@ function buildKeyboard(id: string, o: OrderInput) {
   if (wa) contact.push({ text: '📞 Anrufen', callback_data: `call:${id}` })
   if (wa) contact.push({ text: '💬 WhatsApp', url: `https://wa.me/${wa}` })
   if (contact.length) rows.push(contact)
+  // One-tap: open WhatsApp to the customer with the order summary prefilled.
+  if (wa) {
+    const text = encodeURIComponent(customerSummary(o, o.price ?? 0, o.eta_minutes ?? 0))
+    rows.push([{ text: '📋 Zusammenfassung an Kunde', url: `https://wa.me/${wa}?text=${text}` }])
+  }
 
   const info: Btn[] = []
   if (o.location) {

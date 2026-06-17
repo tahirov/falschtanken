@@ -13,6 +13,29 @@ const SECRET = Deno.env.get('TELEGRAM_WEBHOOK_SECRET')
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
+/** Customer-facing order summary (customer's language) for the WhatsApp prefill. */
+function customerSummary(o: {
+  situation?: string | null; vehicle?: string | null; location?: string | null
+  eta_minutes?: number | null; price?: number | null; lang?: string | null
+}): string {
+  const lang = o.lang === 'en' ? 'en' : o.lang === 'pl' ? 'pl' : 'de'
+  const eta = o.eta_minutes ?? 0
+  const T = {
+    de: { title: 'Tankhilfe24 – Ihr Auftrag', sit: 'Situation', veh: 'Fahrzeug', loc: 'Standort', eta: `Techniker Ihsan ist unterwegs – Ankunft in ca. ${eta} Min.`, price: 'Festpreis', foot: 'Bei Fragen einfach hier antworten.' },
+    en: { title: 'Tankhilfe24 – Your job', sit: 'Situation', veh: 'Vehicle', loc: 'Location', eta: `Technician Ihsan is on the way – arriving in approx. ${eta} min.`, price: 'Fixed price', foot: 'Any questions, just reply here.' },
+    pl: { title: 'Tankhilfe24 – Twoje zlecenie', sit: 'Sytuacja', veh: 'Pojazd', loc: 'Lokalizacja', eta: `Technik Ihsan jest w drodze – przyjazd za ok. ${eta} min.`, price: 'Cena stała', foot: 'W razie pytań po prostu odpowiedz tutaj.' },
+  }[lang]
+  return [
+    T.title,
+    o.situation ? `${T.sit}: ${o.situation}` : '',
+    o.vehicle ? `${T.veh}: ${o.vehicle}` : '',
+    o.location ? `${T.loc}: ${o.location}` : '',
+    T.eta,
+    `${T.price}: €${o.price ?? 0}`,
+    T.foot,
+  ].filter(Boolean).join('\n')
+}
+
 /** Phone → wa.me target (digits incl. country code); assumes Germany for "0…". */
 function waNumber(phone?: string | null): string | null {
   let d = (phone ?? '').replace(/[^\d]/g, '')
@@ -99,7 +122,7 @@ Deno.serve(async (req) => {
       // Fetch order details for the contact card + the quick-link buttons.
       const { data: ord } = await supabase
         .from('orders')
-        .select('contact_name, contact_phone, location, vehicle_doc_url')
+        .select('contact_name, contact_phone, location, vehicle_doc_url, situation, vehicle, eta_minutes, price, lang')
         .eq('id', id)
         .maybeSingle()
 
@@ -115,6 +138,10 @@ Deno.serve(async (req) => {
           if (wa) contact.push({ text: '📞 Anrufen', callback_data: `call:${id}` })
           if (wa) contact.push({ text: '💬 WhatsApp', url: `https://wa.me/${wa}` })
           if (contact.length) rows.push(contact)
+          if (wa) {
+            const summary = encodeURIComponent(customerSummary(ord))
+            rows.push([{ text: '📋 Zusammenfassung an Kunde', url: `https://wa.me/${wa}?text=${summary}` }])
+          }
           const info: { text: string; url?: string }[] = []
           if (ord.location) {
             info.push({
