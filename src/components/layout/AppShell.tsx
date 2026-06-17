@@ -1,7 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, Globe } from 'lucide-react'
-import { AdminMenu } from '@/components/layout/AdminMenu'
+import { AppMenu } from '@/components/layout/AppMenu'
 import { useAppStore } from '@/store/useAppStore'
 import { translations, type Lang } from '@/lib/i18n'
 
@@ -31,19 +31,34 @@ export function AppShell({ children }: AppShellProps) {
   const titleKey = routeTitles[pathname] ?? 'landing'
   const screenTitle = t.nav.screenTitles[titleKey]
   const showBack = pathname !== '/'
+  const isAdmin = pathname.startsWith('/admin')
 
   return (
     // Desktop: content sits in a phone-sized card on a very light grey page.
     // Mobile: the card fills the screen (it is the only content area anyway).
-    <div className="h-dvh sm:min-h-dvh bg-muted flex justify-center sm:items-center sm:py-6 overflow-hidden sm:overflow-auto">
-      <div className="w-full max-w-[480px] bg-background flex flex-col relative h-dvh sm:h-[860px] sm:max-h-[calc(100dvh-3rem)] overflow-hidden sm:rounded-2xl sm:border sm:shadow-xl">
+    <div
+      className={
+        isAdmin
+          ? // Admin: full-bleed desktop page (mobile stays full screen).
+            'h-dvh bg-muted flex flex-col overflow-hidden'
+          : // Customer funnel: phone-sized card centered on desktop.
+            'h-dvh sm:min-h-dvh bg-muted flex justify-center sm:items-center sm:py-6 overflow-hidden sm:overflow-auto'
+      }
+    >
+      <div
+        className={
+          isAdmin
+            ? 'w-full flex-1 bg-background flex flex-col relative overflow-hidden'
+            : 'w-full max-w-[480px] bg-background flex flex-col relative h-dvh sm:h-[860px] sm:max-h-[calc(100dvh-3rem)] overflow-hidden sm:rounded-2xl sm:border sm:shadow-xl'
+        }
+      >
         {/* Header */}
         <header
           className="flex items-center justify-between px-3 h-14 border-b bg-background/95 sticky top-0 z-10 backdrop-blur-sm"
           style={{ paddingTop: 'env(safe-area-inset-top)' }}
         >
           <div className="flex items-center gap-1">
-            <AdminMenu />
+            {!isAdmin && <AppMenu />}
             {showBack && (
               <Button
                 variant="ghost"
@@ -54,7 +69,14 @@ export function AppShell({ children }: AppShellProps) {
                 <ChevronLeft className="size-5" />
               </Button>
             )}
-            <span className="font-heading font-bold text-base pl-1">{t.appName}</span>
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="font-heading font-bold text-base pl-1"
+              aria-label={t.appName}
+            >
+              {t.appName}
+            </button>
           </div>
           {isLanding ? (
             <div className="flex items-center gap-0.5">
